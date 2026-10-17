@@ -1,0 +1,42 @@
+Package: SparseArray
+Type: Package
+Title: Build Temporal Sparse Arrays from OHDSI Cohort Features
+Version: 0.0.1
+Authors@R:
+    person("Study", "Team", email = "study@example.org", role = c("aut", "cre"))
+Description: Creates study cohorts and temporal sequence patient-level
+    covariates and converts the persisted artifacts into a deterministic
+    three-dimensional sparse array of patient by time position by covariate,
+    together with the FeatureExtraction output in long format. Andromeda-backed
+    processing limits in-memory work while retaining the source identifier maps.
+License: Apache License (>= 2)
+Encoding: UTF-8
+Depends:
+    R (>= 4.0.0)
+Imports:
+    Andromeda,
+    checkmate,
+    DatabaseConnector,
+    dplyr,
+    FeatureExtraction (>= 3.2.0),
+    jsonlite,
+    ParallelLogger,
+    PatientLevelPrediction (>= 6.0.0),
+    rlang,
+    SqlRender,
+    utils
+Suggests:
+    Matrix,
+    slam,
+    testthat (>= 3.0.0),
+    withr
+Remotes:
+    OHDSI/Andromeda@v0.6.0,
+    OHDSI/DatabaseConnector@v5.0.2,
+    OHDSI/FeatureExtraction@v3.2.0,
+    OHDSI/ParallelLogger@v2.0.2,
+    OHDSI/PatientLevelPrediction@v6.0.0,
+    OHDSI/SqlRender@v1.9.0
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

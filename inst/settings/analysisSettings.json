@@ -1,0 +1,43 @@
+{
+  "siteRole": "primary",
+  "preprocessSettings": {
+    "dateMin": "1900-01-01",
+    "dateMax": "2260-12-31",
+    "adultAgeMin": 18,
+    "minConceptUnitCount": 10,
+    "quantileCount": 10,
+    "quantileMethod": "rank",
+    "measurementTieBreakColumn": "measurement_id"
+  },
+  "populationSettings": {
+    "minRecordCount": 10,
+    "inpatientConceptIds": [
+      9201,
+      262
+    ],
+    "includeDescendantVisitConcepts": true,
+    "minAdmissionLengthOfStay": 2,
+    "lengthOfStayOperator": ">="
+  },
+  "personSplitSettings": {
+    "seed": 50,
+    "pretrainTrainFraction": 0.7,
+    "pretrainValidFraction": 0.15,
+    "downstreamFraction": 0.15
+  },
+  "allRecordsSettings": {
+    "cohortId": 1100,
+    "timeInterval": 1,
+    "useConditionOccurrence": true,
+    "useDrugExposure": true,
+    "useProcedureOccurrence": true,
+    "useMeasurementValueUnit": true
+  },
+  "quantileSettings": {
+    "basis": "all",
+    "quantileFile": null
+  },
+  "personSampleSettings": {
+    "samplePersonCount": null
+  }
+}

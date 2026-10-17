@@ -1,0 +1,35 @@
+name: feature-extraction-v3
+
+services:
+  rstudio:
+    build:
+      context: .
+      dockerfile: DockerImage/Dockerfile
+    image: feature-extraction-v3-rstudio:4.1.2
+    container_name: feature-extraction-v3-rstudio
+    ports:
+      - "48787:8787"
+    environment:
+      PASSWORD: "${FEATURE_EXTRACTION_V3_RSTUDIO_PASSWORD:?Set FEATURE_EXTRACTION_V3_RSTUDIO_PASSWORD}"
+      USERID: "1001"
+      GROUPID: "1001"
+      TZ: "Asia/Seoul"
+      # Defaults to the driver installed in the image; point this at the mounted
+      # jdbc/ folder to use a site-specific driver instead.
+      DATABASECONNECTOR_JAR_FOLDER: "${SPARSE_ARRAY_JDBC_FOLDER:-/home/rstudio/jdbc}"
+      SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER: "${SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER:-/home/rstudio/feature_extraction_v3/data/andromeda}"
+      SPARSE_ARRAY_OUTPUT_FOLDER: "${SPARSE_ARRAY_OUTPUT_FOLDER:-/home/rstudio/feature_extraction_v3/output}"
+      # Empty means the temporal sequence settings installed with the package.
+      SPARSE_ARRAY_COVARIATE_SETTINGS_FILE: "${SPARSE_ARRAY_COVARIATE_SETTINGS_FILE:-}"
+      SPARSE_ARRAY_DB_SERVER: "${SPARSE_ARRAY_DB_SERVER:?Set SPARSE_ARRAY_DB_SERVER}"
+      SPARSE_ARRAY_DB_PORT: "${SPARSE_ARRAY_DB_PORT:-1433}"
+      SPARSE_ARRAY_DB_USER: "${SPARSE_ARRAY_DB_USER:?Set SPARSE_ARRAY_DB_USER}"
+      SPARSE_ARRAY_DB_PASSWORD: "${SPARSE_ARRAY_DB_PASSWORD:?Set SPARSE_ARRAY_DB_PASSWORD}"
+      SPARSE_ARRAY_CDM_DATABASE_SCHEMA: "${SPARSE_ARRAY_CDM_DATABASE_SCHEMA:?Set SPARSE_ARRAY_CDM_DATABASE_SCHEMA}"
+      SPARSE_ARRAY_COHORT_DATABASE_SCHEMA: "${SPARSE_ARRAY_COHORT_DATABASE_SCHEMA:?Set SPARSE_ARRAY_COHORT_DATABASE_SCHEMA}"
+      SPARSE_ARRAY_COHORT_TABLE: "${SPARSE_ARRAY_COHORT_TABLE:-cohort_v3}"
+      SPARSE_ARRAY_BATCH_SIZE: "${SPARSE_ARRAY_BATCH_SIZE:-1000000}"
+    volumes:
+      - /workspace/feature_extraction_v3:/home/rstudio/feature_extraction_v3
+    working_dir: /home/rstudio/feature_extraction_v3
+    restart: unless-stopped

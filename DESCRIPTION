@@ -1,0 +1,43 @@
+Package: TabEHR
+Type: Package
+Title: Preprocess OMOP CDM Records and Build Downstream Task Data for EHR
+    Foundation Models
+Version: 0.1.0
+Authors@R:
+    person("Study", "Team", email = "study@example.org", role = c("aut", "cre"))
+Description: Ports the record preprocessing of the MedRep study
+    (create_trajectory.py) to OHDSI SQL executed through DatabaseConnector and
+    SqlRender, selects the study population, splits the patients once into a
+    pretraining and a downstream group, derives the measurement quantile table
+    from the pretraining patients only, and runs the SparseArray study package
+    restricted to the downstream patients so that the task inputs and labels
+    never see a pretraining patient. Every output is written per database so the
+    same code runs at an external validation site with only its schema
+    arguments changed.
+License: Apache License (>= 2)
+Encoding: UTF-8
+Depends:
+    R (>= 4.0.0)
+Imports:
+    Andromeda,
+    checkmate,
+    DatabaseConnector,
+    dplyr,
+    jsonlite,
+    ParallelLogger,
+    PatientLevelPrediction (>= 6.0.0),
+    rlang,
+    SparseArray,
+    SqlRender,
+    stats,
+    utils
+Suggests:
+    testthat (>= 3.0.0)
+Remotes:
+    OHDSI/Andromeda@v0.6.0,
+    OHDSI/DatabaseConnector@v5.0.2,
+    OHDSI/ParallelLogger@v2.0.2,
+    OHDSI/SqlRender@v1.9.0
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

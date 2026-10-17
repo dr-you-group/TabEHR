@@ -1,0 +1,577 @@
+{
+  "covariateSettings": {
+    "admission": {
+      "settingsType": "temporalSequence",
+      "timePart": "day",
+      "timeInterval": 1,
+      "sequenceStartDay": -99999,
+      "sequenceEndDay": 0,
+      "useConditionOccurrence": true,
+      "useDrugExposure": true,
+      "useProcedureOccurrence": true,
+      "useMeasurementValueUnit": true
+    },
+    "admissionNoCondition": {
+      "settingsType": "temporalSequence",
+      "timePart": "day",
+      "timeInterval": 1,
+      "sequenceStartDay": -99999,
+      "sequenceEndDay": 0,
+      "useConditionOccurrence": false,
+      "useDrugExposure": true,
+      "useProcedureOccurrence": true,
+      "useMeasurementValueUnit": true
+    },
+    "discharge": {
+      "settingsType": "temporalSequence",
+      "timePart": "day",
+      "timeInterval": 1,
+      "sequenceStartDay": -99999,
+      "sequenceEndDay": 0,
+      "useConditionOccurrence": true,
+      "useDrugExposure": true,
+      "useProcedureOccurrence": true,
+      "useMeasurementValueUnit": true
+    }
+  },
+  "defaultPopulationSettings": {
+    "binary": true,
+    "includeAllOutcomes": true,
+    "firstExposureOnly": false,
+    "washoutPeriod": 0,
+    "removeSubjectsWithPriorOutcome": false,
+    "priorOutcomeLookback": 99999,
+    "requireTimeAtRisk": false,
+    "minTimeAtRisk": 0,
+    "riskWindowStart": 0,
+    "startAnchor": "cohort start",
+    "riskWindowEnd": 0,
+    "endAnchor": "cohort end",
+    "restrictTarToCohortEnd": false
+  },
+  "settings": [
+    {
+      "taskId": "death7",
+      "targetId": 1000,
+      "outcomeId": 1001,
+      "covariateSettingsId": "admission",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 6,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 7,
+        "endAnchor": "cohort start"
+      },
+      "note": "7-day mortality, in and out of hospital, from the day after admission"
+    },
+    {
+      "taskId": "death30",
+      "targetId": 1000,
+      "outcomeId": 1001,
+      "covariateSettingsId": "admission",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 29,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 30,
+        "endAnchor": "cohort start"
+      },
+      "note": "30-day mortality, in and out of hospital, from the day after admission"
+    },
+    {
+      "taskId": "longStay",
+      "targetId": 1000,
+      "outcomeId": 1002,
+      "covariateSettingsId": "admission",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort start"
+      },
+      "note": "Long length of stay, index admission >= 7 days"
+    },
+    {
+      "taskId": "phenotype2001",
+      "targetId": 1000,
+      "outcomeId": 2001,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2002",
+      "targetId": 1000,
+      "outcomeId": 2002,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2003",
+      "targetId": 1000,
+      "outcomeId": 2003,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2004",
+      "targetId": 1000,
+      "outcomeId": 2004,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2005",
+      "targetId": 1000,
+      "outcomeId": 2005,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2006",
+      "targetId": 1000,
+      "outcomeId": 2006,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2007",
+      "targetId": 1000,
+      "outcomeId": 2007,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2008",
+      "targetId": 1000,
+      "outcomeId": 2008,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2009",
+      "targetId": 1000,
+      "outcomeId": 2009,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2010",
+      "targetId": 1000,
+      "outcomeId": 2010,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2011",
+      "targetId": 1000,
+      "outcomeId": 2011,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2012",
+      "targetId": 1000,
+      "outcomeId": 2012,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2013",
+      "targetId": 1000,
+      "outcomeId": 2013,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2014",
+      "targetId": 1000,
+      "outcomeId": 2014,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2015",
+      "targetId": 1000,
+      "outcomeId": 2015,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2016",
+      "targetId": 1000,
+      "outcomeId": 2016,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2017",
+      "targetId": 1000,
+      "outcomeId": 2017,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2018",
+      "targetId": 1000,
+      "outcomeId": 2018,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2019",
+      "targetId": 1000,
+      "outcomeId": 2019,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2020",
+      "targetId": 1000,
+      "outcomeId": 2020,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2021",
+      "targetId": 1000,
+      "outcomeId": 2021,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2022",
+      "targetId": 1000,
+      "outcomeId": 2022,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2023",
+      "targetId": 1000,
+      "outcomeId": 2023,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2024",
+      "targetId": 1000,
+      "outcomeId": 2024,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2025",
+      "targetId": 1000,
+      "outcomeId": 2025,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2026",
+      "targetId": 1000,
+      "outcomeId": 2026,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "phenotype2027",
+      "targetId": 1000,
+      "outcomeId": 2027,
+      "covariateSettingsId": "admissionNoCondition",
+      "populationSettings": {
+        "riskWindowStart": 0,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 0,
+        "endAnchor": "cohort end"
+      },
+      "note": "Phenotyping, condition during the index stay"
+    },
+    {
+      "taskId": "readmit",
+      "targetId": 1003,
+      "outcomeId": 1000,
+      "covariateSettingsId": "discharge",
+      "populationSettings": {
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 29,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 30,
+        "endAnchor": "cohort start"
+      },
+      "note": "30-day readmission after discharge"
+    },
+    {
+      "taskId": "newDx3001",
+      "targetId": 1003,
+      "outcomeId": 3001,
+      "covariateSettingsId": "discharge",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 364,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 365,
+        "endAnchor": "cohort start"
+      },
+      "note": "New diagnosis within 365 days of discharge"
+    },
+    {
+      "taskId": "newDx3002",
+      "targetId": 1003,
+      "outcomeId": 3002,
+      "covariateSettingsId": "discharge",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 364,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 365,
+        "endAnchor": "cohort start"
+      },
+      "note": "New diagnosis within 365 days of discharge"
+    },
+    {
+      "taskId": "newDx3003",
+      "targetId": 1003,
+      "outcomeId": 3003,
+      "covariateSettingsId": "discharge",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 364,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 365,
+        "endAnchor": "cohort start"
+      },
+      "note": "New diagnosis within 365 days of discharge"
+    },
+    {
+      "taskId": "newDx3004",
+      "targetId": 1003,
+      "outcomeId": 3004,
+      "covariateSettingsId": "discharge",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 364,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 365,
+        "endAnchor": "cohort start"
+      },
+      "note": "New diagnosis within 365 days of discharge"
+    },
+    {
+      "taskId": "newDx3005",
+      "targetId": 1003,
+      "outcomeId": 3005,
+      "covariateSettingsId": "discharge",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 364,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 365,
+        "endAnchor": "cohort start"
+      },
+      "note": "New diagnosis within 365 days of discharge"
+    },
+    {
+      "taskId": "newDx3006",
+      "targetId": 1003,
+      "outcomeId": 3006,
+      "covariateSettingsId": "discharge",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 364,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 365,
+        "endAnchor": "cohort start"
+      },
+      "note": "New diagnosis within 365 days of discharge"
+    },
+    {
+      "taskId": "newDx3007",
+      "targetId": 1003,
+      "outcomeId": 3007,
+      "covariateSettingsId": "discharge",
+      "populationSettings": {
+        "removeSubjectsWithPriorOutcome": true,
+        "requireTimeAtRisk": true,
+        "minTimeAtRisk": 364,
+        "riskWindowStart": 1,
+        "startAnchor": "cohort start",
+        "riskWindowEnd": 365,
+        "endAnchor": "cohort start"
+      },
+      "note": "New diagnosis within 365 days of discharge"
+    }
+  ]
+}

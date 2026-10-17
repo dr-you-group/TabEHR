@@ -1,0 +1,11 @@
+^SparseArray$
+^DockerImage$
+^extras$
+^output$
+^compose\.yaml$
+^\.env.*$
+^CLAUDE\.md$
+^OPEN_QUESTIONS\.md$
+^TabEHR\.Rproj$
+^\.Rproj\.user$
+^man-roxygen$

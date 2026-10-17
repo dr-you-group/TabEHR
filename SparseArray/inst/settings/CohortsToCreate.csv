@@ -1,0 +1,39 @@
+atlasId,atlasName,cohortId,name,type
+1000,Inpatient Visit,1000,Inpatient_visit,target;operation
+1001,Death (in-hospital),1001,Death,operation
+1002,Long length of stay,1002,Long_length_of_stay,operation
+1003,Inpatient Visit (discharge indexed),1003,Inpatient_visit_discharge,target
+2001,Acute and unspecified renal failure,2001,Acute_and_unspecified_renal_failure_phenotype,phenotype
+2002,Acute hemorrhagic cerebrovascular disease,2002,Acute_hemorrhagic_cerebrovascular_disease_phenotype,phenotype
+2003,Acute myocardial infarction,2003,Acute_myocardial_infarction_phenotype,phenotype
+2004,Cardiac dysrhythmias,2004,Cardiac_dysrhythmias_phenotype,phenotype
+2005,Cerebral infarction,2005,Cerebral_infarction_phenotype,phenotype
+2006,Chronic kidney disease,2006,Chronic_kidney_disease_phenotype,phenotype
+2007,Chronic obstructive pulmonary disease and bronchiectasis,2007,Chronic_obstructive_pulmonary_disease_and_bronchiectasis_phenotype,phenotype
+2008,Conduction disorders,2008,Conduction_disorders_phenotype,phenotype
+2009,Coronary atherosclerosis and other heart disease,2009,Coronary_atherosclerosis_and_other_heart_disease_phenotype,phenotype
+2010,Diabetes mellitus with complication,2010,Diabetes_mellitus_with_complication_phenotype,phenotype
+2011,Diabetes mellitus without complication,2011,Diabetes_mellitus_without_complication_phenotype,phenotype
+2012,Disorders of lipid metabolism,2012,Disorders_of_lipid_metabolism_phenotype,phenotype
+2013,Essential hypertension,2013,Essential_hypertension_phenotype,phenotype
+2014,Fluid and electrolyte disorders,2014,Fluid_and_electrolyte_disorders_phenotype,phenotype
+2015,Gastrointestinal hemorrhage,2015,Gastrointestinal_hemorrhage_phenotype,phenotype
+2016,Heart failure,2016,Heart_failure_phenotype,phenotype
+2017,Hepatic failure,2017,Hepatic_failure_phenotype,phenotype
+2018,Hypertension with complications and secondary hypertension,2018,Hypertension_with_complications_and_secondary_hypertension_phenotype,phenotype
+2019,Other specified and unspecified liver disease,2019,Other_specified_and_unspecified_liver_disease_phenotype,phenotype
+2020,Other specified and unspecified lower respiratory disease,2020,Other_specified_and_unspecified_lower_respiratory_disease_phenotype,phenotype
+2021,Other specified and unspecified upper respiratory disease,2021,Other_specified_and_unspecified_upper_respiratory_disease_phenotype,phenotype
+2022,"Pleurisy, pleural effusion and pulmonary collapse",2022,Pleurisy_pleural_effusion_and_pulmonary_collapse_phenotype,phenotype
+2023,Pneumonia (except that caused by tuberculosis),2023,Pneumonia_except_that_caused_by_tuberculosis_phenotype,phenotype
+2024,Pneumothorax,2024,Pneumothorax_phenotype,phenotype
+2025,Respiratory failure; insufficiency; arrest,2025,Respiratory_failure_insufficiency_arrest_phenotype,phenotype
+2026,Septicemia,2026,Septicemia_phenotype,phenotype
+2027,Shock,2027,Shock_phenotype,phenotype
+3001,Heart failure,3001,Heart_failure,new_diagnoses
+3002,Afib,3002,Afib,new_diagnoses
+3003,Coronary heart disease,3003,Coronary_heart_disease,new_diagnoses
+3004,Essential hypertension,3004,Essential_hypertension,new_diagnoses
+3005,Hypothyroidism,3005,Hypothyroidism,new_diagnoses
+3006,T2DM,3006,T2DM,new_diagnoses
+3007,GI Bleeding,3007,GI_bleeding,new_diagnoses

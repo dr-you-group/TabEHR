@@ -1,0 +1,35 @@
+name: tabehr
+
+services:
+  rstudio:
+    build:
+      context: .
+      dockerfile: DockerImage/Dockerfile
+    image: tabehr-rstudio:4.1.2
+    container_name: tabehr-rstudio
+    ports:
+      - "48788:8787"
+    environment:
+      PASSWORD: "${FEATURE_EXTRACTION_V3_RSTUDIO_PASSWORD:?Set FEATURE_EXTRACTION_V3_RSTUDIO_PASSWORD}"
+      USERID: "1001"
+      GROUPID: "1001"
+      TZ: "Asia/Seoul"
+      DATABASECONNECTOR_JAR_FOLDER: "${SPARSE_ARRAY_JDBC_FOLDER:-/home/rstudio/jdbc}"
+      SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER: "${SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER:-/home/rstudio/tabehr/data/andromeda}"
+      TABEHR_OUTPUT_FOLDER: "${TABEHR_OUTPUT_FOLDER:-/home/rstudio/tabehr/output}"
+      SPARSE_ARRAY_DB_SERVER: "${SPARSE_ARRAY_DB_SERVER:?Set SPARSE_ARRAY_DB_SERVER}"
+      SPARSE_ARRAY_DB_PORT: "${SPARSE_ARRAY_DB_PORT:-1433}"
+      SPARSE_ARRAY_DB_USER: "${SPARSE_ARRAY_DB_USER:?Set SPARSE_ARRAY_DB_USER}"
+      SPARSE_ARRAY_DB_PASSWORD: "${SPARSE_ARRAY_DB_PASSWORD:?Set SPARSE_ARRAY_DB_PASSWORD}"
+      SPARSE_ARRAY_CDM_DATABASE_SCHEMA: "${SPARSE_ARRAY_CDM_DATABASE_SCHEMA:?Set SPARSE_ARRAY_CDM_DATABASE_SCHEMA}"
+      SPARSE_ARRAY_VOCABULARY_DATABASE_SCHEMA: "${SPARSE_ARRAY_VOCABULARY_DATABASE_SCHEMA:-}"
+      SPARSE_ARRAY_COHORT_DATABASE_SCHEMA: "${SPARSE_ARRAY_COHORT_DATABASE_SCHEMA:?Set SPARSE_ARRAY_COHORT_DATABASE_SCHEMA}"
+      SPARSE_ARRAY_COHORT_TABLE: "${SPARSE_ARRAY_COHORT_TABLE:-cohort_v3}"
+    volumes:
+      # The project itself, so edits on the host take effect in the container.
+      # Both packages are INSTALLED in the image, so reinstall after editing:
+      #   docker compose exec rstudio R CMD INSTALL /home/rstudio/tabehr/SparseArray
+      #   docker compose exec rstudio R CMD INSTALL /home/rstudio/tabehr
+      - .:/home/rstudio/tabehr
+    working_dir: /home/rstudio/tabehr
+    restart: unless-stopped
