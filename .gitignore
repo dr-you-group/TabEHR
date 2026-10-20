@@ -1,3 +1,7 @@
+# Working notes: only the README is tracked at the project root
+/*.md
+!/README.md
+
 # Credentials and machine-local configuration
 .env
 .env.*

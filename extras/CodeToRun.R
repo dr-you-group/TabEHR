@@ -43,13 +43,9 @@ outputFolder <- file.path(Sys.getenv("TABEHR_OUTPUT_FOLDER", unset = "output"),
 options(andromedaTempFolder = Sys.getenv("SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER"))
 
 # ---------------------------------------------------------------------------
-# First pass: 1,000 patients, to see the shape of everything before committing
-# to a full run. Read output/<databaseId>/validation_report.md, then set
-# samplePersonCount to NULL and run it again.
+# The full run.
 # ---------------------------------------------------------------------------
-analysisSettings <- createAnalysisSettings(
-  personSampleSettings = createPersonSampleSettings(samplePersonCount = 1000)
-)
+analysisSettings <- createAnalysisSettings()
 
 execute(
   connectionDetails = connectionDetails,
@@ -70,17 +66,11 @@ execute(
 )
 
 # ---------------------------------------------------------------------------
-# The full run: the same call with the default settings.
+# A trial run on 1,000 patients. Use these settings in the call above instead,
+# and run from extractRecords on: every table is rebuilt from the sample.
 # ---------------------------------------------------------------------------
-# execute(
-#   connectionDetails = connectionDetails,
-#   cdmDatabaseSchema = cdmDatabaseSchema,
-#   vocabularyDatabaseSchema = vocabularyDatabaseSchema,
-#   cohortDatabaseSchema = cohortDatabaseSchema,
-#   cohortTable = cohortTable,
-#   outputFolder = outputFolder,
-#   databaseId = databaseId,
-#   analysisSettings = createAnalysisSettings()
+# analysisSettings <- createAnalysisSettings(
+#   personSampleSettings = createPersonSampleSettings(samplePersonCount = 1000)
 # )
 
 # ---------------------------------------------------------------------------
