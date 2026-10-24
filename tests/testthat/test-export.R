@@ -50,6 +50,24 @@ test_that("the report renders a markdown table", {
   expect_identical(.markdownTable(NULL), "_(no rows)_")
 })
 
+test_that("report metrics preserve integer64 counts", {
+  skip_if_not_installed("bit64")
+  metrics <- data.frame(
+    n_person = bit64::as.integer64("317878"),
+    n_large = bit64::as.integer64("9007199254740993"),
+    note = "checked",
+    stringsAsFactors = FALSE
+  )
+  expect_identical(
+    .asMetricTable(metrics),
+    data.frame(
+      metric = c("n_person", "n_large", "note"),
+      value = c("317878", "9007199254740993", "checked"),
+      stringsAsFactors = FALSE
+    )
+  )
+})
+
 test_that("a streamed file gets snake_case headers", {
   # The rows arrive from Andromeda in camelCase, but every file this project
   # writes uses the OMOP and MedRep column names.

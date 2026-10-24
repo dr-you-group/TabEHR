@@ -83,26 +83,23 @@ createAllRecordsSettings <- function(cohortId = 1100,
   )
 }
 
-# covariateRef plus the unit crosswalk, in the shape resolveCovariateUnit()
+# covariateRef plus the unit crosswalk, in the shape resolveCovariateId()
 # reads: one row per covariate, two for a covariate id that two units share.
 #' @noRd
 .unitReference <- function(map, crosswalkFile) {
-  crosswalk <- utils::read.csv(crosswalkFile)
+  crosswalk <- utils::read.csv(crosswalkFile,
+                               colClasses = c(covariateId = "character"))
   reference <- map[, c("covariateId", "analysisId", "conceptId")]
+  key <- as.character(reference$covariateId)
   reference$unitConceptId <- crosswalk$unitConceptId[
-    match(reference$covariateId, crosswalk$covariateId)
+    match(key, crosswalk$covariateId)
   ]
-  shared <- crosswalk[crosswalk$covariateId %in% reference$covariateId, ]
+  shared <- crosswalk[crosswalk$covariateId %in% key, ]
   shared <- shared[duplicated(shared$covariateId), ]
   if (nrow(shared) > 0) {
-    reference <- rbind(reference, data.frame(
-      covariateId = shared$covariateId,
-      analysisId = reference$analysisId[match(shared$covariateId,
-                                              reference$covariateId)],
-      conceptId = shared$conceptId,
-      unitConceptId = shared$unitConceptId,
-      stringsAsFactors = FALSE
-    ))
+    extra <- reference[match(shared$covariateId, key), , drop = FALSE]
+    extra$unitConceptId <- shared$unitConceptId
+    reference <- rbind(reference, extra)
   }
   reference
 }
@@ -125,8 +122,8 @@ createAllRecordsSettings <- function(cohortId = 1100,
   crosswalkFile <- file.path(outputFolder, "measurementValueUnitRef.csv")
   map$unitConceptId <- NA_real_
   if (file.exists(crosswalkFile)) {
-    unit <- resolveCovariateUnit(map$covariateId,
-                                 .unitReference(map, crosswalkFile))
+    unit <- resolveCovariateId(map$covariateId,
+                               .unitReference(map, crosswalkFile))
     map$unitConceptId <- unit$unitConceptId
     ParallelLogger::logInfo(
       "Resolved the unit of ", sum(!is.na(map$unitConceptId)), " of ",
@@ -149,7 +146,7 @@ createAllRecordsSettings <- function(cohortId = 1100,
     return(0L)
   }
   covariate <- match(batch$covariateId, map$covariateId)
-  patient <- match(batch$rowId, cohort$rowId)
+  patient <- match(as.character(batch$rowId), as.character(cohort$rowId))
   if (anyNA(covariate) || anyNA(patient)) {
     stop("The extraction holds ", sum(is.na(covariate)), " covariate id(s) ",
          "that covariateRef does not name and ", sum(is.na(patient)),
@@ -276,9 +273,11 @@ createAllRecords <- function(connectionDetails,
     allrecords_cohort_table = qualified(tableNames$allRecordsCohort)
   )
   DatabaseConnector::disconnect(connection)
-  .assertCharacterIds(cohort$personId, "person_id")
+  cohort <- .assertCharacterIds(cohort, "personId")
   cohort$indexDate <- as.Date(cohort$indexDate)
-  writeTabehrCsv(cohort, file.path(outputFolder, "allrecords_cohort.csv"))
+  exportedCohort <- cohort
+  names(exportedCohort) <- SqlRender::camelCaseToSnakeCase(names(exportedCohort))
+  writeTabehrCsv(exportedCohort, file.path(outputFolder, "allrecords_cohort.csv"))
 
   covariateData <- Andromeda::loadAndromeda(andromedaFile)
   on.exit({

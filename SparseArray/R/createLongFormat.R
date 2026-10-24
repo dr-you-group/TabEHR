@@ -55,18 +55,23 @@
     }
     return(covariateRef)
   }
-  crosswalk <- utils::read.csv(file)
+  crosswalk <- utils::read.csv(file, colClasses = c(covariateId = "character"))
   required <- c("covariateId", "unitConceptId")
   absent <- required[!required %in% names(crosswalk)]
   if (length(absent) > 0) {
     stop(file, " is missing the column(s) ", paste(absent, collapse = ", "),
          ".", call. = FALSE)
   }
+  # JDBC and Andromeda may return integer64 while CSV infers double. Join on
+  # exact text without changing the original reference column's type.
+  covariateRef$.unitJoinKey <- as.character(covariateRef$covariateId)
+  crosswalk$.unitJoinKey <- crosswalk$covariateId
   joined <- dplyr::left_join(
     covariateRef,
-    crosswalk[, required],
-    by = "covariateId"
+    crosswalk[, c(".unitJoinKey", "unitConceptId")],
+    by = ".unitJoinKey"
   )
+  joined$.unitJoinKey <- NULL
   unresolved <- is.na(joined$unitConceptId) &
     joined$analysisId %in% analysisIds
   if (any(unresolved)) {

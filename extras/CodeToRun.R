@@ -16,11 +16,12 @@ library(TabEHR)
 # tracked file. The variable names are the ones SparseArray already uses, so
 # one .env serves both.
 connectionDetails <- DatabaseConnector::createConnectionDetails(
-  dbms = "sql server",
+  dbms = Sys.getenv("SPARSE_ARRAY_DBMS", unset = "sql server"),
   server = Sys.getenv("SPARSE_ARRAY_DB_SERVER"),
   user = Sys.getenv("SPARSE_ARRAY_DB_USER"),
   password = Sys.getenv("SPARSE_ARRAY_DB_PASSWORD"),
   port = Sys.getenv("SPARSE_ARRAY_DB_PORT", unset = "1433"),
+  extraSettings = Sys.getenv("SPARSE_ARRAY_DB_EXTRA_SETTINGS"),
   pathToDriver = Sys.getenv("SPARSE_ARRAY_JDBC_FOLDER",
                             unset = "/home/rstudio/jdbc")
 )
@@ -39,8 +40,13 @@ cohortTable <- Sys.getenv("SPARSE_ARRAY_COHORT_TABLE", unset = "cohort_v3")
 outputFolder <- file.path(Sys.getenv("TABEHR_OUTPUT_FOLDER", unset = "output"),
                           databaseId)
 
-# A local disk with room for the Andromeda temporary files.
-options(andromedaTempFolder = Sys.getenv("SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER"))
+# A separate local disk may hold the Andromeda working files.
+andromedaTempFolder <- Sys.getenv(
+  "TABEHR_ANDROMEDA_TEMP_FOLDER",
+  unset = Sys.getenv("SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER",
+                    unset = file.path(tempdir(), "andromeda"))
+)
+options(databaseConnectorInteger64AsNumeric = FALSE)
 
 # ---------------------------------------------------------------------------
 # The full run.
@@ -54,6 +60,7 @@ execute(
   cohortDatabaseSchema = cohortDatabaseSchema,
   cohortTable = cohortTable,
   outputFolder = outputFolder,
+  andromedaTempFolder = andromedaTempFolder,
   databaseId = databaseId,
   analysisSettings = analysisSettings,
   checkDatabase = TRUE,

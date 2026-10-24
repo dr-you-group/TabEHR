@@ -148,10 +148,19 @@ studyExtractionNames <- function(studySettingsFile = system.file(
   nrow(rows)
 }
 
-# allrecords, filtered to one extraction's rows and observation window.
+# Domains enabled by one extraction's settings, including the condition-free
+# phenotype input. The allrecords extraction itself contains every domain.
+#' @noRd
+.taskInputDomains <- function(settings) {
+  flags <- c(cond = "useConditionOccurrence", drug = "useDrugExposure",
+             proc = "useProcedureOccurrence", meas = "useMeasurementValueUnit")
+  names(flags)[vapply(flags, function(flag) isTRUE(settings[[flag]]), logical(1))]
+}
+
+# allrecords, filtered to one extraction's rows, domains and observation window.
 #' @noRd
 .writeTaskInput <- function(covariateData, map, taskRows, window, file,
-                            batchSize) {
+                            batchSize, domains = unique(map$domain)) {
   covariateData$taskRows <- taskRows
   on.exit(try(covariateData$taskRows <- NULL, silent = TRUE), add = TRUE)
   # The window in FeatureExtraction's own sign convention: timeId counts days
@@ -160,7 +169,13 @@ studyExtractionNames <- function(studySettingsFile = system.file(
   lower <- -as.integer(window[["end"]])
   upper <- -as.integer(window[["start"]])
 
-  rows <- covariateData$covariates %>%
+  covariates <- covariateData$covariates
+  excluded <- map$covariateId[!map$domain %in% domains]
+  if (length(excluded) > 0) {
+    covariates <- covariates %>%
+      dplyr::filter(!(.data$covariateId %in% !!excluded))
+  }
+  rows <- covariates %>%
     dplyr::inner_join(covariateData$taskRows,
                       by = c("rowId" = "arRowId")) %>%
     dplyr::mutate(taskTimeId = .data$timeId - .data$shift) %>%
@@ -369,7 +384,10 @@ createTaskInput <- function(connectionDetails,
         ", days ", window[["start"]], " to ", window[["end"]]
       )
       inputRows[[extraction]] <- .writeTaskInput(
-        covariateData, map, taskRows, window, file, batchSize
+        covariateData, map, taskRows, window, file, batchSize,
+        domains = .taskInputDomains(
+          spec$covariateSettings[[group$covariateSettingsId]]
+        )
       )
       ParallelLogger::logInfo("Wrote ", inputRows[[extraction]],
                               " record(s) to ", file)

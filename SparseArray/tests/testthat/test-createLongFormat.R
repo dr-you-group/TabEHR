@@ -80,3 +80,19 @@ test_that("createLongFormat reports a missing covariateData folder", {
     "Cannot find a saved plpData"
   )
 })
+
+test_that("unit crosswalk joins integer64 ids without losing digits", {
+  skip_if_not_installed("bit64")
+  folder <- tempfile("unit-crosswalk-")
+  dir.create(folder)
+  on.exit(unlink(folder, recursive = TRUE), add = TRUE)
+  ids <- c("9007199254740992", "9007199254740993")
+  ref <- data.frame(covariateId = bit64::as.integer64(ids), analysisId = 998)
+  write.csv(data.frame(covariateId = ids, unitConceptId = c(1001, 2002)),
+            file.path(folder, .measurementValueUnitRefFile), row.names = FALSE)
+  result <- .addUnitConceptId(ref, list(), folder)
+  expect_identical(as.character(result$covariateId), ids)
+  expect_s3_class(result$covariateId, "integer64")
+  expect_equal(result$unitConceptId, c(1001, 2002))
+  expect_named(result, c("covariateId", "analysisId", "unitConceptId"))
+})

@@ -26,6 +26,7 @@ Imports:
     SqlRender,
     utils
 Suggests:
+    bit64,
     Matrix,
     slam,
     testthat (>= 3.0.0),

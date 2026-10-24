@@ -15,7 +15,7 @@
 IF OBJECT_ID('@person_sample_table', 'U') IS NOT NULL DROP TABLE @person_sample_table;
 
 CREATE TABLE @person_sample_table (
-  person_id BIGINT NOT NULL
+  person_id BIGINT NOT NULL PRIMARY KEY
 );
 
 INSERT INTO @person_sample_table (person_id)

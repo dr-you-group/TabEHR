@@ -93,7 +93,8 @@
 .asMetricTable <- function(row) {
   data.frame(
     metric = names(row),
-    value = as.character(unlist(row[1, ], use.names = FALSE)),
+    value = vapply(row, function(column) as.character(column[1]),
+                   character(1), USE.NAMES = FALSE),
     stringsAsFactors = FALSE
   )
 }
@@ -410,7 +411,7 @@ runDiagnostics <- function(connectionDetails,
 
   expected <- c("records", "measurements", "conceptUnit", "recordCounts",
                 "admissionHistory", "studyPopulation", "personSplit",
-                "downstreamPerson", "measQuantiles")
+                "downstreamPerson")
   present <- vapply(
     expected,
     function(name) .tableExists(connection, cohortDatabaseSchema,
@@ -452,7 +453,11 @@ runDiagnostics <- function(connectionDetails,
     )
   }
 
-  if (present[["measQuantiles"]] && present[["measurements"]]) {
+  # Quantiles belong to the optional MedRep workflow, not execute(). Check
+  # them when available without requiring them for the main task outputs.
+  quantilesPresent <- .tableExists(connection, cohortDatabaseSchema,
+                                    tableNames$measQuantiles)
+  if (quantilesPresent && present[["measurements"]]) {
     coverage <- .queryTabehrSql(
       connection, "ValidateQuantileCoverage.sql",
       tempEmulationSchema = tempEmulationSchema,
@@ -625,10 +630,11 @@ runDiagnostics <- function(connectionDetails,
   }
 
   required <- c("study_population_flow.csv", "study_population.csv",
-                "person_split.csv", "split_summary.csv", "meas_quantiles.csv")
+                "person_split.csv", "split_summary.csv")
   optional <- c("allrecords.csv", "allrecords.csv.gz", "outcomeLabels.csv",
                 "outcomeLabelsAttrition.csv", "CohortCounts.csv",
-                "cohort_counts_restricted.csv", "run_info.json")
+                "cohort_counts_restricted.csv", "run_info.json",
+                "meas_quantiles.csv")
   files <- data.frame(
     file = c(required, optional),
     required = c(rep(TRUE, length(required)), rep(FALSE, length(optional))),

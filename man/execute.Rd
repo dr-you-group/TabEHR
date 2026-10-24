@@ -15,18 +15,16 @@ execute(
   outputFolder,
   databaseId,
   analysisSettings = loadAnalysisSettings(),
-  studySettingsFile = system.file("settings", "studySettings.json", package =
-    "SparseArray"),
+  studySettingsFile = system.file("settings", "studySettings.json", package = "TabEHR"),
   checkDatabase = TRUE,
   extractRecords = TRUE,
   createStudyPopulation = TRUE,
   createPersonSplit = TRUE,
-  createMeasurementQuantiles = TRUE,
   createAllRecords = TRUE,
-  runSparseArray = TRUE,
+  createTaskInput = TRUE,
   runDiagnostics = TRUE,
-  maxRowsPerFile = NULL,
-  batchSize = 1e+06
+  batchSize = 1e+06,
+  andromedaTempFolder = NULL
 )
 }
 \arguments{
@@ -63,8 +61,8 @@ the convention of this project, \verb{output/<databaseId>}, and is recorded in
 by \code{\link[=createAnalysisSettings]{createAnalysisSettings()}}, or read from JSON by
 \code{\link[=loadAnalysisSettings]{loadAnalysisSettings()}}.}
 
-\item{studySettingsFile}{The SparseArray study settings, which define the
-tasks. Defaults to the file installed with that package.}
+\item{studySettingsFile}{The study settings, which define the tasks.
+Defaults to the file installed with this package.}
 
 \item{checkDatabase}{Check the assumptions about the database first?}
 
@@ -75,19 +73,17 @@ records?}
 
 \item{createPersonSplit}{Split the patients into pretraining and downstream?}
 
-\item{createMeasurementQuantiles}{Compute or load the measurement quantile
-table?}
+\item{createAllRecords}{Extract every record of every study population
+patient, which is the reference data everything else is derived from?}
 
-\item{createAllRecords}{Build and write the finished record table?}
-
-\item{runSparseArray}{Run the SparseArray stages on the downstream patients?}
+\item{createTaskInput}{Build the downstream task inputs and labels?}
 
 \item{runDiagnostics}{Check the output?}
 
-\item{maxRowsPerFile}{Split \code{allrecords.csv} after this many rows, on a
-patient boundary, or \code{NULL} for one file.}
-
 \item{batchSize}{Rows per batch when large files are written.}
+
+\item{andromedaTempFolder}{Optional directory for Andromeda's working files.
+Created when needed. The previous R option is restored after the run.}
 }
 \value{
 Invisibly, \code{NULL}.
@@ -99,12 +95,17 @@ be called on its own with the same arguments.
 }
 \details{
 The order is forced by one dependency chain: the study population needs the
-record counts, the patient split needs the study population, and the
-measurement quantiles need the split. That is why the quantile bins are
-applied at the end, by \code{\link[=createAllRecords]{createAllRecords()}}, rather than while the records
-are extracted. It is only sound because the bin suffix cannot change a
-patient's record count, which \code{CountRecords.sql} explains and
-\code{\link[=runDiagnostics]{runDiagnostics()}} verifies against the data.
+record counts of \code{\link[=extractRecords]{extractRecords()}}, the patient split needs the study
+population, and \code{allrecords} is extracted for the patients that survived.
+Everything downstream is derived from \code{allrecords}: the task inputs here,
+and the MedRep comparison files in \code{extras/CreateMedRepFiles.R}.
+
+\code{\link[=extractRecords]{extractRecords()}} and \code{\link[=createAllRecords]{createAllRecords()}} do not produce the same
+records, and they are not meant to. The first applies the original MedRep
+rules because that is what the study population criteria were defined on;
+the second applies FeatureExtraction's, because the downstream inputs come
+from the same extraction. \code{\link[=runDiagnostics]{runDiagnostics()}} reports the difference per
+patient rather than hiding it.
 
 Run it once with \code{createPersonSampleSettings(samplePersonCount = 1000)},
 read \code{validation_report.md}, then run it again with \code{NULL} for the real

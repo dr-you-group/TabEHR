@@ -46,6 +46,8 @@
 #' @param createTaskInput Build the downstream task inputs and labels?
 #' @param runDiagnostics Check the output?
 #' @param batchSize Rows per batch when large files are written.
+#' @param andromedaTempFolder Optional directory for Andromeda's working files.
+#'   Created when needed. The previous R option is restored after the run.
 #'
 #' @return Invisibly, `NULL`.
 #' @export
@@ -70,18 +72,25 @@ execute <- function(connectionDetails,
                     createAllRecords = TRUE,
                     createTaskInput = TRUE,
                     runDiagnostics = TRUE,
-                    batchSize = 1e6) {
+                    batchSize = 1e6,
+                    andromedaTempFolder = NULL) {
   checkmate::assertClass(analysisSettings, "tabehrAnalysisSettings")
   checkmate::assertString(outputFolder, min.chars = 1)
   checkmate::assertString(databaseId, min.chars = 1)
   .ensureFolder(outputFolder)
+  if (!is.null(andromedaTempFolder)) {
+    checkmate::assertString(andromedaTempFolder, min.chars = 1)
+    .ensureFolder(andromedaTempFolder)
+    previousOptions <- options(andromedaTempFolder = andromedaTempFolder)
+    on.exit(options(previousOptions), add = TRUE)
+  }
 
   ParallelLogger::addDefaultFileLogger(file.path(outputFolder, "log.txt"))
   ParallelLogger::addDefaultErrorReportLogger(
     file.path(outputFolder, "errorReportR.txt")
   )
   on.exit(ParallelLogger::unregisterLogger("DEFAULT_FILE_LOGGER",
-                                           silent = TRUE))
+                                           silent = TRUE), add = TRUE)
   on.exit(ParallelLogger::unregisterLogger("DEFAULT_ERRORREPORT_LOGGER",
                                            silent = TRUE), add = TRUE)
   ParallelLogger::logInfo("TabEHR on ", databaseId, " (",

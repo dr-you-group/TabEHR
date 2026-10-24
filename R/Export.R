@@ -259,6 +259,11 @@ exportRunInfo <- function(connectionDetails,
       ),
       vocabularyVersion = vocabularyVersion,
       rVersion = R.version.string,
+      storage = list(
+        outputFolder = normalizePath(outputFolder, winslash = "/", mustWork = TRUE),
+        andromedaTempFolder = getOption("andromedaTempFolder", tempdir()),
+        rTempFolder = tempdir()
+      ),
       packageVersions = list(
         TabEHR = .packageVersionOrNa("TabEHR"),
         SparseArray = .packageVersionOrNa("SparseArray"),

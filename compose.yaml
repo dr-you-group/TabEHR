@@ -8,15 +8,20 @@ services:
     image: tabehr-rstudio:4.1.2
     container_name: tabehr-rstudio
     ports:
-      - "48788:8787"
+      - "0.0.0.0:48788:8787"
     environment:
       PASSWORD: "${FEATURE_EXTRACTION_V3_RSTUDIO_PASSWORD:?Set FEATURE_EXTRACTION_V3_RSTUDIO_PASSWORD}"
       USERID: "1001"
       GROUPID: "1001"
       TZ: "Asia/Seoul"
       DATABASECONNECTOR_JAR_FOLDER: "${SPARSE_ARRAY_JDBC_FOLDER:-/home/rstudio/jdbc}"
-      SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER: "${SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER:-/home/rstudio/tabehr/data/andromeda}"
-      TABEHR_OUTPUT_FOLDER: "${TABEHR_OUTPUT_FOLDER:-/home/rstudio/tabehr/output}"
+      SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER: "${TABEHR_ANDROMEDA_TEMP_FOLDER:-${SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER:-/home/rstudio/storage/andromeda}}"
+      TABEHR_ANDROMEDA_TEMP_FOLDER: "${TABEHR_ANDROMEDA_TEMP_FOLDER:-${SPARSE_ARRAY_ANDROMEDA_TEMP_FOLDER:-/home/rstudio/storage/andromeda}}"
+      TABEHR_OUTPUT_FOLDER: "${TABEHR_OUTPUT_FOLDER:-/home/rstudio/storage/output}"
+      TMPDIR: "${TABEHR_R_TEMP_FOLDER:-/home/rstudio/storage/tmp}"
+      SPARSE_ARRAY_DBMS: "${SPARSE_ARRAY_DBMS:-sql server}"
+      SPARSE_ARRAY_DB_EXTRA_SETTINGS: "${SPARSE_ARRAY_DB_EXTRA_SETTINGS:-}"
+      SPARSE_ARRAY_JDBC_FOLDER: "${SPARSE_ARRAY_JDBC_FOLDER:-/home/rstudio/jdbc}"
       SPARSE_ARRAY_DB_SERVER: "${SPARSE_ARRAY_DB_SERVER:?Set SPARSE_ARRAY_DB_SERVER}"
       SPARSE_ARRAY_DB_PORT: "${SPARSE_ARRAY_DB_PORT:-1433}"
       SPARSE_ARRAY_DB_USER: "${SPARSE_ARRAY_DB_USER:?Set SPARSE_ARRAY_DB_USER}"
@@ -31,5 +36,25 @@ services:
       #   docker compose exec rstudio R CMD INSTALL /home/rstudio/tabehr/SparseArray
       #   docker compose exec rstudio R CMD INSTALL /home/rstudio/tabehr
       - .:/home/rstudio/tabehr
+      # Set this to a host folder on a larger disk, e.g. D:/TabEHR-storage/files.
+      - "${TABEHR_STORAGE_HOST_FOLDER:-./data/storage}:/home/rstudio/storage"
     working_dir: /home/rstudio/tabehr
+    healthcheck:
+      test:
+        - CMD
+        - Rscript
+        - --vanilla
+        - -e
+        - "tryCatch({ x <- url('http://127.0.0.1:8787/auth-sign-in', open = 'rb'); readBin(x, 'raw', n = 1); close(x) }, error = function(e) quit(status = 1L))"
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        mkdir -p "$$TABEHR_OUTPUT_FOLDER" "$$TABEHR_ANDROMEDA_TEMP_FOLDER" "$$TMPDIR" &&
+        chown "$$USERID:$$GROUPID" "$$TABEHR_OUTPUT_FOLDER" "$$TABEHR_ANDROMEDA_TEMP_FOLDER" "$$TMPDIR" &&
+        exec /init
     restart: unless-stopped

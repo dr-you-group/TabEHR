@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+.Renviron
+.Renviron.*
+.Rhistory
+.RData
+.Rproj.user
+output
+data
+jdbc
+*.log
+errorReport*.txt
+SparseArray/output
+SparseArray/data
+SparseArray/jdbc
+SparseArray/.env*

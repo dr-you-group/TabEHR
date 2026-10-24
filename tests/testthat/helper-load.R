@@ -4,7 +4,8 @@
 if (!"TabEHR" %in% loadedNamespaces()) {
   for (file in c("SettingsObjects.R", "Dialects.R", "HelperFunctions.R",
                  "MeasurementQuantiles.R", "PersonSplit.R", "Export.R",
-                 "Diagnostics.R", "CovariateTokens.R", "AllRecords.R")) {
+                 "Diagnostics.R", "CovariateTokens.R", "AllRecords.R",
+                 "TaskInput.R", "Main.R")) {
     source(file.path("..", "..", "R", file))
   }
 }
