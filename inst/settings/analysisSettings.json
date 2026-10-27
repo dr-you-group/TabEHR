@@ -11,6 +11,7 @@
   },
   "populationSettings": {
     "minRecordCount": 10,
+    "requireQualifyingAdmission": false,
     "inpatientConceptIds": [
       9201,
       262

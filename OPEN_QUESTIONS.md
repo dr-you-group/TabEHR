@@ -4,7 +4,7 @@
 
 - 상태: `해결` = 결정 반영 / `실행 확인 완료` = 실제 산출물 또는 DB로 검증 /
   `일부 확인` = 확인 범위에 한계가 있음 / `답 대기` = 연구·구현 방향 결정 필요
-- 마지막 갱신: 2026-10-24
+- 마지막 갱신: 2026-10-27 (K절)
 
 ## 2026-10-24 확인 범위
 
@@ -83,6 +83,9 @@ labels.")`로 매번 실패했다. `tests/testthat/test-execute.R`는 `createOut
 
 **반영**: `StudyPopulationFlow.sql`의 누적 순서를 `전체 → 성인 기록 있음 → 2일 이상 입원 이력
 → 기록 10건 이상(= 대상 환자)`으로 맞췄다. 단독 탈락 수(5~7행)도 함께 남긴다.
+
+**2026-10-27**: 입원 조건을 기본값에서 적용하지 않기로 했다(K1). 이 순서는 조건을 켠
+경우에 그대로 유효하고, 기본값에서는 누적 3행이 빠진다.
 
 ---
 
@@ -351,6 +354,9 @@ allrecords와 SparseArray 출력이 따로 만들어지던 구조를 뒤집었�
 pandas 일치를 비트 단위로 검증해 둔 코드라, 실제 데이터에서 R 경로가 확인될 때까지 두는 게
 안전하다고 판단했다. 본 흐름(`execute()`)에서는 호출하지 않는다. 확인되면 삭제한다.
 
+**2026-10-27**: 아래의 `resolveCovariateUnit()` 문제와 저장 경로를 K2에서 수정했다.
+실데이터 실행 검증은 아직 없다.
+
 **2026-10-24 확인**: 전체 실행에서 MedRep 변환은 실행하지 않았고 `MedRep/` 산출물도
 없다. 더구나 `extras/CreateMedRepFiles.R:82`가 호출하는 `resolveCovariateUnit()`은
 현재 소스·NAMESPACE·설치된 TabEHR에 **존재하지 않는다**. 존재하는 함수는
@@ -458,6 +464,7 @@ pandas 일치를 비트 단위로 검증해 둔 코드라, 실제 데이터에�
 ### I6. 선택 MedRep 변환은 아직 실행 불가 (P2)
 
 H3의 `resolveCovariateUnit()` 미존재를 설치된 namespace에서도 다시 확인했다.
+(**2026-10-27**: 코드는 K2에서 수정했다. 실행 검증 전에는 이 항목을 닫지 않는다.)
 본 파이프라인의 완료와 선택 변환 기능의 완료를 구분해야 한다. 이 기능의 수정·실데이터
 검증 전에는 프로젝트의 모든 기능을 완료했다고 표현하지 않는다.
 
@@ -541,3 +548,91 @@ H3의 `resolveCovariateUnit()` 미존재를 설치된 namespace에서도 다시 
 현재 판정은 **“목표에 맞는 핵심 전처리·task 생성 구현 및 현재 데이터 검증 완료,
 독립적 재실행·다기관 재사용을 위한 패키지 완결성은 미완료”**다. 기존 I절의 결함은
 여전히 미수정이며 이번 작업은 목적과 요구를 기준으로 한 추가 점검이다.
+
+---
+
+## K. 2026-10-27 사용자 결정
+
+### K1. 2일 이상 입원 이력 조건을 대상 환자 기준에서 제외 (status: 해결)
+
+> 사용자 지시: study population 조건 중 "입원 visit(9201, 262 및 하위 concept) 중
+> `DATEDIFF(day, visit_start_date, visit_end_date) >= 2`이고 입원 시작 시점 18세 이상인
+> 입원 1회 이상"을 적용하면 N수가 너무 적다. 이 조건은 제외한다.
+
+2026-10-24 전체 실행의 flow는 317,878 → 313,896 → **47,000** → 46,990이었다. 즉 입원
+조건 한 가지가 성인 기록이 있는 환자의 85%를 제거했다. `CLAUDE.md` §4의 "대상 환자"
+표에 있던 조건이지만, 이번 지시로 **기본값에서 적용하지 않는다.**
+
+**반영**
+
+- `createPopulationSettings(requireQualifyingAdmission = FALSE)`를 신설했고 기본값은
+  `FALSE`다. `inst/settings/analysisSettings.json`도 같다.
+- `StudyPopulation.sql`은 이 값이 1일 때만 `admission_history`와 `INNER JOIN`하고,
+  기본값에서는 `LEFT JOIN` + `COALESCE(n_admissions, 0)`이다. 즉 대상 환자 기준은
+  **성인 기록 + 기록 10건 이상** 두 가지다.
+- `AdmissionHistory.sql`은 그대로 실행한다. 조건을 적용하지 않아도 환자별 적격 입원
+  수를 `study_population.n_admissions`와 flow 표에 남겨, 나중에 조건을 켜거나 보고할 때
+  다시 조회하지 않아도 되게 했다.
+- `StudyPopulationFlow.sql`의 누적 3행(`with_qualifying_admission`)은 조건을 적용할
+  때만 나온다(B3의 순서는 조건을 켠 경우에 그대로 유효하다). 적용하지 않을 때는 단독
+  행 6행(`lost_to_admission_only`)이 "조건을 켰다면 잃었을 환자 수"를 알려준다.
+  `step_order` 값은 두 설정에서 같은 단계에 같은 값을 유지한다.
+- 조건을 다시 적용하려면 `createAnalysisSettings(populationSettings =
+  createPopulationSettings(requireQualifyingAdmission = TRUE))`로 실행한다.
+
+이 조건은 환자 단위 포함 기준이었으므로, 제외해도 SparseArray target cohort(입원 1일
+이상)와 task 정의는 바뀌지 않는다. **분할·`allrecords`·task input은 더 많은 환자로 다시
+만들어야 한다**(`extractRecords` 이후 전체 재실행).
+
+### K2. 선택 MedRep 변환 수정 (status: 코드 수정, 실행 검증 대기)
+
+H3·I6의 미해결 항목이다. `extras/CreateMedRepFiles.R`에서 세 가지를 고쳤다.
+
+1. **존재하지 않는 `resolveCovariateUnit()` 호출 제거.** 단위 해석을 본 경로와 같은
+   `TabEHR:::.allRecordsCovariateMap()`에 위임한다. `createAllRecords()`가 쓰는 함수와
+   같으므로 두 산출물이 같은 covariate를 다르게 키로 쓸 수 없다.
+2. **`resolveCovariateId()`로 이름만 바꿨을 때 나온 "695 covariate id(s) have no row in
+   covariateRef" 오류의 원인 제거.** 그 호출은 `covariateRef`가 아니라
+   `measurementValueUnitRef.csv`만으로 만든 표를 참조 표로 넘겼고, Andromeda가 돌려주는
+   covariateId는 `bit64::integer64`인데 CSV에서 읽은 값은 double이다. R 4.1.2에는
+   `mtfrm()` 일반화가 없어 `match(integer64, double)`은 비트를 그대로 double로 읽어
+   **695개 전부 불일치**한다. 그래서 Andromeda 쪽과 파일 쪽을 잇는 모든 조인을
+   `format(id, scientific = FALSE, trim = TRUE)`의 10진 문자열로 바꿨고, covariate별
+   값 조회는 dbplyr 대신 그 문자열을 리터럴로 쓰는 `DBI::dbGetQuery()`로 한다.
+   `rowId` 매칭도 본 경로와 같이 문자열로 한다.
+3. **저장 경로를 `<output folder>/<databaseId>/MedRep`으로 통일.** 인자는
+   `<output folder> [databaseId] [quantileCount]`이고, 숫자 인자는 `quantileCount`,
+   그 밖은 `databaseId`로 읽으므로 기존 호출(`output/mimic 10`)도 그대로 동작한다.
+   `databaseId`를 주지 않으면 추출 파일이 있는 하위 폴더 하나를 찾아 쓴다.
+
+또 `%>%`와 `.data`를 쓰던 부분을 `dplyr::`·`rlang::`로 바꿨다. TabEHR은 둘을 import만
+하고 export하지 않아서, `library(TabEHR)`만 붙인 `Rscript` 실행에서는 없는 이름이었다.
+
+**아직 하지 않은 것**: 실제 DB의 `allrecords`로 실행해 분위표·토큰을 확인하는 일.
+사용자 환경에서 실행한 결과를 받아야 I6을 닫을 수 있다.
+
+### K3. age·gender covariate는 추가하지 않는다 (status: 해결)
+
+> 사용자 결정: 둘 다 안 넣는다.
+
+`FeatureExtraction::createTemporalSequenceCovariateSettings()`는 `useDemographicsGender`(analysis 1),
+`useDemographicsAge`(2), `useDemographicsAgeGroup`(3)을 인자로 받지만, v3.2.0의 해당 SQL은
+temporal sequence 분기에서 `CAST(NULL AS INT) AS time_id`를 내보낸다. 즉 **시간축이 없는
+covariate로 rowId당 1행**이고 `timePart`·`timeInterval`과 무관하다. 값은
+`YEAR(cohort_start_date) - year_of_birth`(연도 차이, 생일 미반영)이며 covariate id는 age가
+`1000 + analysis_id`(= 1002), gender가 `gender_concept_id * 1000 + 1`, age group이
+`FLOOR(age/5) * 1000 + 3`이다. gender는 `gender_concept_id != 0`만 남는다.
+
+검토한 선택지는 (a) covariateSettings 3개 블록의 flag만 켜기, (b) `persons.csv` +
+`taskDemographics.csv`를 직접 export(= REVISION_PLAN §2.7 R4), (c) 둘 다,
+(d) `taskLabels/*.csv`에 PLP의 `ageYear`·`gender` 열만 추가하기였고 **모두 하지 않는다.**
+따라서 REVISION_PLAN §2.7(R4)의 기본 정보 export 제안도 이 결정으로 보류 상태다.
+
+이미 있는 것만 적어 둔다: `savePopulations = TRUE`이므로 `studyPopulation/<task>.rds`에는
+PLP가 index date 기준으로 계산한 `ageYear`·`gender`가 rowId별로 들어 있다. 필요해지면
+추출을 다시 하지 않고 그 파일에서 꺼낼 수 있다. 본 파이프라인의 출력 파일
+(`taskLabels/*.csv`, `taskInput/*/input.csv.gz`, `allrecords.csv.gz`)에는 없다.
+
+allrecords 추출에 demographics를 켜는 길은 애초에 막혀 있다: 그 추출의 index date는 환자의
+마지막 기록일이어서 나이가 전 기간 사건에 붙일 수 없는 값이고,
+`.allRecordsCovariateMap()`이 도메인에 배치할 수 없는 analysis id를 오류로 막는다.

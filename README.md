@@ -34,10 +34,13 @@ Rscript extras/CodeToRun.R
 values (`databaseId`, connection, schemas). Edit it there. After the run,
 check `output/<databaseId>/validation_report.md`.
 
-The MedRep comparison files are optional:
+The MedRep comparison files are optional. They are written to
+`<output folder>/<databaseId>/MedRep`, so either form of the call below puts
+them in the same place:
 
 ```bash
 Rscript extras/CreateMedRepFiles.R output/mimic 10
+Rscript extras/CreateMedRepFiles.R output mimic 10
 ```
 
 To resume, set the flags of the stages already done to `FALSE` in `execute()`.
@@ -47,7 +50,7 @@ Each stage is also an exported function that takes the same arguments.
 |---|---|
 | `checkDatabase` | checks the database assumptions |
 | `extractRecords` | records for the study population criteria |
-| `createStudyPopulation` | adults, admission of 2+ days, 10+ records |
+| `createStudyPopulation` | adults with 10+ records. The 2+ day admission rule is counted and reported, and applied only with `createPopulationSettings(requireQualifyingAdmission = TRUE)` |
 | `createPersonSplit` | 70:15:15 split into pretrain train / valid / downstream |
 | `createAllRecords` | every record of the study population → `allrecords.csv.gz` |
 | `createTaskInput` | downstream task inputs (`taskInput/`) and labels |

@@ -13,8 +13,9 @@
 #' \describe{
 #'   \item{[extractRecords()]}{condition, drug, procedure and measurement
 #'     records, filtered the way `create_trajectory.py` filters them.}
-#'   \item{[createStudyPopulation()]}{adults, with a qualifying inpatient
-#'     admission, and with enough records.}
+#'   \item{[createStudyPopulation()]}{adults with enough records. The
+#'     qualifying inpatient admission is counted and reported, and applied as a
+#'     criterion only when asked for, see [createPopulationSettings()].}
 #'   \item{[createPersonSplit()]}{one split, by patient, into pretraining and
 #'     downstream.}
 #'   \item{[createMeasurementQuantiles()] and [createAllRecords()]}{the

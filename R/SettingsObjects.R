@@ -75,12 +75,20 @@ createPreprocessSettings <- function(dateMin = "1900-01-01",
 
 #' Settings for the study population
 #'
-#' The three criteria of the study, all of which must hold. They are applied in
-#' the order adult, qualifying admission, record count, which is the order the
-#' flow table reports.
+#' Two criteria hold by default, applied in the order adult, record count, which
+#' is the order the flow table reports. The admission criterion is a third one
+#' that is counted and reported but not applied unless
+#' `requireQualifyingAdmission` is `TRUE`.
 #'
 #' @param minRecordCount Minimum number of de-duplicated records per patient,
 #'   counted after the preprocessing.
+#' @param requireQualifyingAdmission Keep only patients with a qualifying
+#'   inpatient admission? `FALSE`, the default, keeps every patient that the
+#'   other two criteria keep: on MIMIC the admission rule left too few patients
+#'   to pretrain on, and neither MedRep's own code nor the SparseArray target
+#'   cohort applies a patient level length of stay rule. The admission count is
+#'   written to the study population table and the flow table either way, so
+#'   the criterion can be applied later without re-running the stage.
 #' @param inpatientConceptIds Visit concepts that count as an admission.
 #' @param includeDescendantVisitConcepts Also count their descendants, as the
 #'   SparseArray target cohort does.
@@ -92,11 +100,13 @@ createPreprocessSettings <- function(dateMin = "1900-01-01",
 #' @return An object of class `tabehrPopulationSettings`.
 #' @export
 createPopulationSettings <- function(minRecordCount = 10,
+                                     requireQualifyingAdmission = FALSE,
                                      inpatientConceptIds = c(9201, 262),
                                      includeDescendantVisitConcepts = TRUE,
                                      minAdmissionLengthOfStay = 2,
                                      lengthOfStayOperator = ">=") {
   checkmate::assertInt(minRecordCount, lower = 1)
+  checkmate::assertFlag(requireQualifyingAdmission)
   checkmate::assertNumeric(inpatientConceptIds, min.len = 1, any.missing = FALSE)
   checkmate::assertFlag(includeDescendantVisitConcepts)
   checkmate::assertInt(minAdmissionLengthOfStay, lower = 0)
@@ -104,6 +114,7 @@ createPopulationSettings <- function(minRecordCount = 10,
 
   settings <- list(
     minRecordCount = as.numeric(minRecordCount),
+    requireQualifyingAdmission = requireQualifyingAdmission,
     inpatientConceptIds = as.numeric(inpatientConceptIds),
     includeDescendantVisitConcepts = includeDescendantVisitConcepts,
     minAdmissionLengthOfStay = as.numeric(minAdmissionLengthOfStay),

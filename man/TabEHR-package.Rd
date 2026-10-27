@@ -15,8 +15,9 @@ SQL, with the patient split that pretraining and the downstream tasks share.
 \describe{
 \item{\code{\link[=extractRecords]{extractRecords()}}}{condition, drug, procedure and measurement
 records, filtered the way \code{create_trajectory.py} filters them.}
-\item{\code{\link[=createStudyPopulation]{createStudyPopulation()}}}{adults, with a qualifying inpatient
-admission, and with enough records.}
+\item{\code{\link[=createStudyPopulation]{createStudyPopulation()}}}{adults with enough records. The
+qualifying inpatient admission is counted and reported, and applied as a
+criterion only when asked for, see \code{\link[=createPopulationSettings]{createPopulationSettings()}}.}
 \item{\code{\link[=createPersonSplit]{createPersonSplit()}}}{one split, by patient, into pretraining and
 downstream.}
 \item{\code{\link[=createMeasurementQuantiles]{createMeasurementQuantiles()}} and \code{\link[=createAllRecords]{createAllRecords()}}}{the

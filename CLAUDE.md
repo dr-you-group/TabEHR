@@ -94,6 +94,8 @@ MedRep 논문에는 "EHR foundation model은 종단 기록에 의존하므로 2�
 | 입원 이력 | 입원 visit(`visit_concept_id` 9201, 262 및 그 하위 concept) 중 **입원 기간 2일 이상**(`DATEDIFF(day, visit_start_date, visit_end_date) >= 2`)이고 **입원 시작 시점에 18세 이상**인 입원이 1회 이상 |
 | 기록 수 | 1단계(`extractRecords()`, 원본 MedRep 규칙)를 거친 뒤 환자당 기록 10건 이상 (원본과 같은 기준: 중복 제거 후 4개 도메인 합계). 4단계 `allrecords`의 기록 수와는 다를 수 있고, 맞추지 않는다 |
 
+> **2026-10-27 결정 변경**: **입원 이력 조건은 기본값에서 적용하지 않는다.** MIMIC 전체 실행에서 이 조건 하나가 성인 기록 환자 313,896명을 47,000명으로 줄여 N이 너무 적었다. 조건 자체는 지우지 않고 `createPopulationSettings(requireQualifyingAdmission = TRUE)`로 켤 수 있게 두고, 끈 상태에서도 환자별 적격 입원 수와 "조건을 켰다면 잃었을 환자 수"를 flow 표에 남긴다. 따라서 기본 대상 환자 기준은 **성인 + 기록 10건 이상** 두 가지다. 자세한 내용은 `OPEN_QUESTIONS.md` K1.
+
 - 입원 기간 기준은 config 값으로 둔다. 기본은 `>= 2`(MedRep `labeling.py`의 조건과 같음). 논문 문장("more than 2 days")을 엄격히 따르면 `> 2`이므로 둘 다 지원한다.
 - 이 조건은 **환자 단위 포함 기준**이다. 대상 환자로 뽑힌 뒤에는 그 환자의 모든 기록(입원 기간과 무관)을 쓰고, SparseArray의 target cohort(입원 기간 1일 이상) 정의도 그대로 둔다.
 - 결과는 `@cohort_database_schema`에 `study_population`(person_id) 테이블로 만들고, 이후 모든 단계(분할, `allrecords`, task input, MedRep 재현)는 이 환자만 대상으로 한다.
@@ -144,7 +146,7 @@ MedRep 논문에는 "EHR foundation model은 종단 기록에 의존하므로 2�
 ### 환자 분할
 
 - pretraining은 새로 하므로 MedRep의 기존 분할(sklearn `random_state=50`)을 재현할 필요는 없다. R에서 `set.seed`로 나눈다.
-- 대상: `study_population`의 환자(성인 + 기록 10건 이상 + 2일 이상 입원 이력).
+- 대상: `study_population`의 환자(성인 + 기록 10건 이상. 입원 이력 조건은 기본에서 적용하지 않는다, 위 2026-10-27 결정 변경 참고).
 - 1차: MedRep과 같은 70:15:15 (환자 단위, 설정값). 70%는 pretraining train, 15%는 pretraining validation, 15%는 downstream 풀이다. pretraining에는 앞의 85%만 쓰고, downstream 15%는 pretraining에 절대 쓰지 않는다.
 - downstream 안의 train / valid / test 분할은 **이번 범위가 아니다.** 이후 fine-tuning 단계(Python, 학습 seed별)에서 환자 단위로 나눈다. 이번 작업은 downstream 환자 전체의 입력·label만 만든다.
 - 어떤 환자도 두 그룹에 동시에 속하면 안 된다. 특히 downstream 환자는 pretraining에 절대 들어가면 안 된다.

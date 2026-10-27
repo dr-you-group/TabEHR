@@ -46,20 +46,25 @@ by \code{\link[=createAnalysisSettings]{createAnalysisSettings()}}, or read from
 Invisibly, a list with the \code{flow} counts and the number of patients.
 }
 \description{
-The three criteria of the study, all of which must hold:
+The criteria of the study, all of which must hold:
 }
 \details{
 \describe{
 \item{adult}{applied per record while the records were extracted, so a
 patient reaches this stage only if an adult record survived.}
-\item{admission}{at least one inpatient visit whose length of stay reaches
-\code{minAdmissionLengthOfStay}, with the patient an adult at admission.}
 \item{records}{at least \code{minRecordCount} de-duplicated records.}
+\item{admission}{at least one inpatient visit whose length of stay reaches
+\code{minAdmissionLengthOfStay}, with the patient an adult at admission. Only
+applied when \code{requireQualifyingAdmission} is \code{TRUE}, which it is not by
+default, see \code{\link[=createPopulationSettings]{createPopulationSettings()}}.}
 }
 
-Being a patient level inclusion criterion, the admission requirement does not
-restrict which of that patient's records are used afterwards, and it does not
-change the SparseArray target cohort, which keeps its own one day minimum.
+The qualifying admissions are counted for every patient either way, into
+\code{n_admissions} of the study population table and into the flow table, so
+turning the criterion on afterwards needs no new query. Being a patient level
+inclusion criterion, it would not restrict which of that patient's records
+are used afterwards, and it does not change the SparseArray target cohort,
+which keeps its own one day minimum.
 
 Writes \code{study_population.csv} and \code{study_population_flow.csv}, the counts for
 the flow diagram.

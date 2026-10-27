@@ -66,7 +66,7 @@
   for (section in report$sections) {
     mark <- switch(section$status, ok = "OK", warn = "WARNING",
                    fail = "FAILED", "info")
-    lines <- c(lines, paste0("### ", section$title, " — ", mark), "")
+    lines <- c(lines, paste0("### ", section$title, " - ", mark), "")
     if (!is.null(section$notes)) {
       lines <- c(lines, paste0("- ", section$notes), "")
     }

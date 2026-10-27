@@ -66,6 +66,9 @@ parameters <- function(dialect) {
       include_descendant_visit_concepts = 1,
       length_of_stay_operator = ">=",
       min_length_of_stay = 2,
+      # The admission criterion is off by default, so the inactive branch is
+      # the one the pipeline renders. Both are rendered below.
+      require_qualifying_admission = 0,
       tie_break_column = "measurement_id",
       downstream_stage = "downstream",
       quantile_basis = "pretrain",
@@ -226,6 +229,42 @@ if (file.exists(measurementValueSql)) {
     stringsAsFactors = FALSE
   ), row.names = FALSE)
 }
+
+# The study population and its flow counts render with and without the
+# admission criterion, so both branches of the join are checked.
+cat("
+==== study population, both admission settings ====
+")
+admissionRows <- list()
+for (file in c("StudyPopulation.sql", "StudyPopulationFlow.sql")) {
+  template <- SqlRender::readSql(file.path(sqlFolder, file))
+  for (required in c(0, 1)) {
+    available <- parameters("sql server")
+    available$require_qualifying_admission <- required
+    used <- available[vapply(
+      names(available),
+      function(name) grepl(paste0("@", name, "\b"), template),
+      logical(1)
+    )]
+    sql <- SqlRender::translate(
+      do.call(SqlRender::render, c(list(sql = template), used)),
+      targetDialect = "sql server"
+    )
+    admissionRows[[length(admissionRows) + 1]] <- data.frame(
+      file = file,
+      require_qualifying_admission = required,
+      joins_admission_history = grepl("tabehr_admission_history", sql,
+                                      fixed = TRUE),
+      inner_join = grepl("INNER JOIN work.tabehr_admission_history", sql,
+                         fixed = TRUE),
+      unresolved_parameters = paste(unique(unlist(regmatches(
+        sql, gregexpr("@[A-Za-z_][A-Za-z0-9_]*", sql)
+      ))), collapse = " "),
+      stringsAsFactors = FALSE
+    )
+  }
+}
+print(do.call(rbind, admissionRows), row.names = FALSE)
 
 failures <- results[!results$ok, , drop = FALSE]
 cat("\n", nrow(results) - nrow(failures), "of", nrow(results), "ok\n")

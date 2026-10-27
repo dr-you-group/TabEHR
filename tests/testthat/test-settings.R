@@ -14,6 +14,9 @@ test_that("the settings objects carry their class and defaults", {
   expect_null(settings$personSampleSettings$samplePersonCount)
   expect_identical(settings$populationSettings$lengthOfStayOperator, ">=")
   expect_equal(settings$populationSettings$minAdmissionLengthOfStay, 2)
+  # The admission criterion is counted but not applied: on MIMIC it cost most
+  # of the study population, and nothing downstream of here depends on it.
+  expect_false(settings$populationSettings$requireQualifyingAdmission)
 })
 
 test_that("bad settings are refused where they are made", {
@@ -21,6 +24,7 @@ test_that("bad settings are refused where they are made", {
   expect_error(createPreprocessSettings(dateMin = "1900/01/01"))
   expect_error(createPopulationSettings(lengthOfStayOperator = "<"))
   expect_error(createPopulationSettings(minRecordCount = 0))
+  expect_error(createPopulationSettings(requireQualifyingAdmission = NA))
   expect_error(createPersonSplitSettings(pretrainTrainFraction = 0.9),
                "sum to 1")
   expect_error(createQuantileSettings(basis = "file"))
@@ -54,7 +58,9 @@ test_that("an external site computes its own quantiles, or applies a file", {
 test_that("settings survive a JSON round trip unchanged", {
   settings <- createAnalysisSettings(
     preprocessSettings = createPreprocessSettings(quantileCount = 4),
-    populationSettings = createPopulationSettings(lengthOfStayOperator = ">"),
+    populationSettings = createPopulationSettings(
+      requireQualifyingAdmission = TRUE, lengthOfStayOperator = ">"
+    ),
     personSplitSettings = createPersonSplitSettings(seed = 7),
     personSampleSettings = createPersonSampleSettings(samplePersonCount = 25)
   )

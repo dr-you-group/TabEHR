@@ -120,3 +120,6 @@ execute(
 # The MedRep comparison files, which are not part of the pipeline.
 # ---------------------------------------------------------------------------
 # Rscript extras/CreateMedRepFiles.R output/mimic 10
+# The files land in output/<databaseId>/MedRep either way, so the base
+# folder with the databaseId works as well:
+# Rscript extras/CreateMedRepFiles.R output mimic 10

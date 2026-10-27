@@ -1,6 +1,12 @@
 # The MedRep comparison files.
 #
-#   Rscript extras/CreateMedRepFiles.R <output folder> [quantileCount]
+#   Rscript extras/CreateMedRepFiles.R <output folder> [databaseId] [quantileCount]
+#
+# The output folder may be the site folder the pipeline wrote, such as
+# output/mimic, or the folder that holds the site folders, such as output, with
+# the databaseId given as well or left to be discovered. Everything is written
+# to <output folder>/<databaseId>/MedRep, next to the stage output it is built
+# from, so an external site cannot overwrite the primary site's files.
 #
 # MedRep is the comparison embedding, so its preprocessing has to be
 # reproducible from this project's data. It is not part of the pipeline: the
@@ -17,7 +23,7 @@
 #
 # How it differs from the original, on purpose:
 #
-#   * record_date is a date, not a timestamp, and a measurement is the last
+#   * record_datetime is a date, not a timestamp, and a measurement is the last
 #     value of its day rather than one per hour. That is FeatureExtraction's
 #     rule, which this project adopted so that allrecords and the downstream
 #     task inputs cannot disagree
@@ -29,21 +35,58 @@
 arguments <- commandArgs(trailingOnly = TRUE)
 outputFolder <- if (length(arguments) >= 1) arguments[1] else
   Sys.getenv("TABEHR_OUTPUT_FOLDER", unset = "output")
-quantileCount <- if (length(arguments) >= 2) as.integer(arguments[2]) else 10L
+# databaseId and quantileCount are told apart by shape rather than by position,
+# so the call documented before this change, with the count second, still works.
+databaseId <- Sys.getenv("TABEHR_DATABASE_ID", unset = "")
+quantileCount <- 10L
+for (argument in utils::tail(arguments, -1)) {
+  if (grepl("^[0-9]+$", argument)) {
+    quantileCount <- as.integer(argument)
+  } else {
+    databaseId <- argument
+  }
+}
 stopifnot(dir.exists(outputFolder), quantileCount >= 1)
 
 library(TabEHR)
-andromedaFile <- file.path(outputFolder, "allRecordsCovariates.zip")
-cohortFile <- file.path(outputFolder, "allrecords_cohort.csv")
-splitFile <- file.path(outputFolder, "person_split.csv")
-for (file in c(andromedaFile, cohortFile, splitFile)) {
+
+# The site folder is the one that holds the extraction: given output/mimic it is
+# that folder, and given output it is output/<databaseId>, or the only site
+# folder there when no databaseId was given.
+extractionFile <- function(folder) file.path(folder, "allRecordsCovariates.zip")
+databaseFolder <- outputFolder
+if (!file.exists(extractionFile(outputFolder))) {
+  candidates <- if (nzchar(databaseId)) {
+    file.path(outputFolder, databaseId)
+  } else {
+    list.dirs(outputFolder, recursive = FALSE)
+  }
+  candidates <- candidates[file.exists(extractionFile(candidates))]
+  if (length(candidates) != 1) {
+    stop("No single site folder with an extraction under ", outputFolder,
+         ": found ", length(candidates),
+         ". Give the site folder itself, or its databaseId as the second ",
+         "argument.", call. = FALSE)
+  }
+  databaseFolder <- candidates[1]
+}
+if (!nzchar(databaseId)) {
+  databaseId <- basename(databaseFolder)
+}
+
+andromedaFile <- extractionFile(databaseFolder)
+cohortFile <- file.path(databaseFolder, "allrecords_cohort.csv")
+splitFile <- file.path(databaseFolder, "person_split.csv")
+crosswalkFile <- file.path(databaseFolder, "measurementValueUnitRef.csv")
+for (file in c(andromedaFile, cohortFile, splitFile, crosswalkFile)) {
   if (!file.exists(file)) {
     stop("Run createAllRecords() and createPersonSplit() first: ", file,
          " is missing.", call. = FALSE)
   }
 }
-medRepFolder <- file.path(outputFolder, "MedRep")
+medRepFolder <- file.path(databaseFolder, "MedRep")
 dir.create(medRepFolder, recursive = TRUE, showWarnings = FALSE)
+cat("database:", databaseId, "\noutput folder:", medRepFolder, "\n")
 
 # ---------------------------------------------------------------------------
 # 1. The split, in MedRep's three files. 70:15:15 was chosen to line up with
@@ -75,58 +118,73 @@ cohort <- read.csv(cohortFile, colClasses = c(person_id = "character"))
 names(cohort) <- SqlRender::snakeCaseToCamelCase(names(cohort))
 cohort$indexDate <- as.Date(cohort$indexDate)
 
-reference <- dplyr::collect(covariateData$covariateRef)
-crosswalk <- read.csv(file.path(outputFolder, "measurementValueUnitRef.csv"))
+# A covariate id is read, never computed: covariateRef names the concept and
+# measurementValueUnitRef.csv names the unit, because the id itself keeps the
+# unit only modulo 1000. This is the map createAllRecords() builds, reused here
+# so that the two outputs cannot key a record differently. A covariate id that
+# two units share comes back with no unit, which the pair filter below drops.
+map <- TabEHR:::.allRecordsCovariateMap(covariateData, databaseFolder)
+# Andromeda hands 64 bit ids back as bit64::integer64, while the crosswalk, the
+# quantile table and the CSV output hold plain numbers, so every join between
+# the two goes through the decimal text of an id rather than its bits.
+idText <- function(x) format(x, scientific = FALSE, trim = TRUE)
 valueAnalysisId <- 998
-measurement <- reference[reference$analysisId == valueAnalysisId, ]
-unit <- resolveCovariateUnit(
-  measurement$covariateId,
-  data.frame(
-    covariateId = crosswalk$covariateId,
-    analysisId = valueAnalysisId,
-    conceptId = crosswalk$conceptId,
-    unitConceptId = crosswalk$unitConceptId
-  )
-)
-measurement$unitConceptId <- unit$unitConceptId
-measurement$unitAmbiguous <- unit$unitAmbiguous
+measurement <- map[map$analysisId == valueAnalysisId, ]
+if (nrow(measurement) == 0) {
+  stop("The extraction holds no analysis ", valueAnalysisId,
+       " covariate, so there is nothing to bin.", call. = FALSE)
+}
 
 Andromeda::createIndex(covariateData$covariates, "covariateId")
-counts <- covariateData$covariates %>%
-  dplyr::filter(.data$covariateId %in% !!measurement$covariateId) %>%
-  dplyr::group_by(.data$covariateId) %>%
-  dplyr::summarise(n = dplyr::n()) %>%
-  dplyr::collect()
-measurement$n <- counts$n[match(measurement$covariateId, counts$covariateId)]
+# Namespaced rather than piped: TabEHR imports the pipe and the .data pronoun
+# without exporting them, so a script that attached only TabEHR would not have
+# them.
+counts <- dplyr::collect(dplyr::summarise(
+  dplyr::group_by(covariateData$covariates, rlang::.data$covariateId),
+  n = dplyr::n()
+))
+measurement$n <- counts$n[match(idText(measurement$covariateId),
+                                idText(counts$covariateId))]
 measurement$n[is.na(measurement$n)] <- 0
 
 # MedRep's filters: a pair needs enough numeric records to be worth binning,
-# and an unmapped unit is not a pair at all.
+# and an unmapped unit is not a pair at all. unitConceptId is NA already for a
+# covariate whose unit is ambiguous, see resolveCovariateId().
 minConceptUnitCount <- 10
 keep <- measurement$n >= minConceptUnitCount &
   !is.na(measurement$unitConceptId) &
-  measurement$unitConceptId != 0 &
-  !measurement$unitAmbiguous
+  measurement$unitConceptId != 0
 cat(sprintf("quantiles for %d of %d (concept, unit) pair(s): n >= %d, unit mapped\n",
             sum(keep), nrow(measurement), minConceptUnitCount))
+if (sum(keep) == 0) {
+  stop("No (concept, unit) pair passes MedRep's filters, so no measurement ",
+       "could be binned. Check that ", basename(crosswalkFile),
+       " belongs to this extraction.", call. = FALSE)
+}
 
 probabilities <- (seq(0, 1, length.out = quantileCount + 1) * 100) / 100
 columns <- paste0("quantile_", seq_len(quantileCount + 1) - 1)
 quantiles <- vector("list", sum(keep))
 kept <- measurement[keep, ]
 for (i in seq_len(nrow(kept))) {
-  id <- kept$covariateId[i]
-  values <- covariateData$covariates %>%
-    dplyr::filter(.data$covariateId == !!id) %>%
-    dplyr::select("covariateValue") %>%
-    dplyr::collect()
-  # type = 7 is R's default and pandas' linear interpolation.
+  # The id goes into the SQL as decimal text: an integer64 cannot be passed
+  # through dbplyr, and a double this large would be formatted in scientific
+  # notation.
+  values <- DBI::dbGetQuery(
+    covariateData,
+    paste0("SELECT covariateValue FROM covariates WHERE covariateId = ",
+           idText(kept$covariateId[i]))
+  )
+  # type = 7 is R's default and pandas linear interpolation.
   boundaries <- stats::quantile(values$covariateValue, probs = probabilities,
                                 type = 7, names = FALSE, na.rm = TRUE)
+  # Plain numbers, not integer64: a concept id, a unit id and a count all fit
+  # in a double exactly, and rbind() over 64 bit integer columns is where the
+  # class is easiest to lose.
   row <- data.frame(
-    measurement_concept_id = kept$conceptId[i],
-    unit_concept_id = kept$unitConceptId[i],
-    n = kept$n[i],
+    measurement_concept_id = as.numeric(kept$conceptId[i]),
+    unit_concept_id = as.numeric(kept$unitConceptId[i]),
+    n = as.numeric(kept$n[i]),
     basis = "all"
   )
   row[columns] <- as.list(boundaries)
@@ -146,17 +204,10 @@ cat("wrote", nrow(quantileTable), "quantile row(s)\n")
 #    their bin. A record whose pair has no quantile row keeps the bare concept
 #    id, which is what the original does too.
 # ---------------------------------------------------------------------------
-map <- reference[, c("covariateId", "analysisId", "conceptId")]
-domains <- c("101" = "cond", "301" = "drug", "501" = "proc", "998" = "meas",
-             "999" = "meas")
-map$domain <- unname(domains[as.character(map$analysisId)])
 map$quantileRow <- match(
-  paste(map$conceptId,
-        measurement$unitConceptId[match(map$covariateId,
-                                        measurement$covariateId)],
-        sep = "|"),
-  paste(quantileTable$measurement_concept_id, quantileTable$unit_concept_id,
-        sep = "|")
+  paste(idText(map$conceptId), idText(map$unitConceptId), sep = "|"),
+  paste(idText(quantileTable$measurement_concept_id),
+        idText(quantileTable$unit_concept_id), sep = "|")
 )
 boundaryMatrix <- as.matrix(quantileTable[, columns])
 
@@ -164,14 +215,21 @@ file <- file.path(medRepFolder, "allrecords.csv.gz")
 out <- gzfile(file, open = "wt")
 writeLines("person_id,domain,concept_id,record_datetime", out)
 written <- 0
-rows <- covariateData$covariates %>%
-  dplyr::arrange(.data$rowId, .data$timeId, .data$covariateId)
+rows <- dplyr::arrange(covariateData$covariates, rlang::.data$rowId,
+                       rlang::.data$timeId, rlang::.data$covariateId)
 tryCatch(
   Andromeda::batchApply(
     rows,
     function(batch) {
       covariate <- match(batch$covariateId, map$covariateId)
-      patient <- match(batch$rowId, cohort$rowId)
+      # The row ids are small, so their text is the same whether or not
+      # Andromeda and the CSV agree on the type.
+      patient <- match(as.character(batch$rowId), as.character(cohort$rowId))
+      if (anyNA(covariate) || anyNA(patient)) {
+        stop("The extraction holds ", sum(is.na(covariate)), " covariate ",
+             "id(s) that covariateRef does not name and ", sum(is.na(patient)),
+             " row id(s) the cohort does not hold.", call. = FALSE)
+      }
       quantileRow <- map$quantileRow[covariate]
       bin <- rep(NA_integer_, nrow(batch))
       hasBin <- !is.na(quantileRow)
@@ -181,13 +239,11 @@ tryCatch(
           boundaryMatrix[quantileRow[hasBin], , drop = FALSE]
         )
       }
-      concept <- format(map$conceptId[covariate], scientific = FALSE,
-                        trim = TRUE)
+      concept <- idText(map$conceptId[covariate])
       out_rows <- data.frame(
         person_id = cohort$personId[patient],
         domain = map$domain[covariate],
-        concept_id = ifelse(is.na(bin), concept,
-                            paste0(concept, "_", bin)),
+        concept_id = ifelse(is.na(bin), concept, paste0(concept, "_", bin)),
         record_datetime = format(cohort$indexDate[patient] - batch$timeId,
                                  "%Y-%m-%d"),
         stringsAsFactors = FALSE
@@ -207,9 +263,10 @@ cat("wrote", written, "record(s) to", file, "\n")
 writeLines(c(
   "# MedRep comparison files",
   "",
-  "Written by `extras/CreateMedRepFiles.R` from this project's `allrecords`,",
-  "in the column set of MedRep's own `create_trajectory.py` output. Two",
-  "differences from the original are deliberate:",
+  paste0("Written by `extras/CreateMedRepFiles.R` from the `allrecords` of ",
+         databaseId, ", in the column set of"),
+  "MedRep's own `create_trajectory.py` output. Two differences from the",
+  "original are deliberate:",
   "",
   "- `record_datetime` holds a **date**, and a measurement is the last value",
   "  of its day. The original keeps one record per hour, with the time of day.",
