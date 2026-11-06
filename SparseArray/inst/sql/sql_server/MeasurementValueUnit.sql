@@ -30,16 +30,29 @@
 -- new decoding rule, and 998 and 999 are free in both of its prespecified
 -- analysis sets (both stop at 926).
 --
--- Inherited from MeasurementValue.sql on purpose: ROW_NUMBER partitions by
--- measurement_concept_id, not by covariate_id, so one concept measured in two
--- units inside one interval contributes one row, the last by date, then the
--- lowest unit, then the lowest value.
+-- One value per (row, concept, interval), chosen in two steps so that two
+-- units are never mixed into one number:
+--
+--   1. @value_aggregate over the values of each (row, concept, unit, interval)
+--   2. the lowest unit of that (row, concept, interval)
+--
+-- Step 2 keeps FeatureExtraction's shape - MeasurementValue.sql also yields one
+-- row per concept per interval, not one per covariate - which is what the
+-- no-value analysis below and everything downstream rely on.
+--
+-- FeatureExtraction instead takes the single record that sorts first on
+-- (date DESC, unit, value). Inside one day that first key cannot discriminate,
+-- because measurement_date is a date, so its rule reduces to the lowest value:
+-- @value_aggregate = 'min' reproduces it, and the other aggregates are this
+-- package's own.
 --
 -- Temp table names are prefixed mvu_ rather than reusing FeatureExtraction's
 -- #meas_cov, so that this builder and that analysis cannot collide inside one
 -- session.
 
 {DEFAULT @cohort_id_clause = ''}
+{DEFAULT @value_aggregate = 'min'}
+{DEFAULT @value_aggregate_function = 'MIN'}
 
 IF OBJECT_ID('tempdb..#mvu_cov', 'U') IS NOT NULL
 	DROP TABLE #mvu_cov;
@@ -53,6 +66,60 @@ WHERE value_as_number IS NOT NULL;
 
 -- The value FeatureExtraction keeps when one concept has several values in one
 -- interval. measurement_concept_id is carried along for the anti-join below.
+IF OBJECT_ID('tempdb..#mvu_agg', 'U') IS NOT NULL
+	DROP TABLE #mvu_agg;
+
+SELECT row_id,
+	measurement_concept_id,
+	unit_concept_id,
+	time_id,
+{@value_aggregate == 'median'} ? {
+	AVG(CASE WHEN value_rank IN ((value_count + 1) / 2, (value_count + 2) / 2)
+		THEN CAST(covariate_value AS FLOAT) END) AS covariate_value
+} : {
+	@value_aggregate_function(CAST(covariate_value AS FLOAT)) AS covariate_value
+}
+INTO #mvu_agg
+FROM (
+	SELECT cohort.@row_id_field AS row_id,
+		measurement.measurement_concept_id,
+		COALESCE(measurement.unit_concept_id, 0) AS unit_concept_id,
+		CAST(FLOOR(DATEDIFF(@time_part, measurement.measurement_date, cohort.cohort_start_date) * 1.0 / @time_interval) AS INT) AS time_id,
+		measurement.value_as_number AS covariate_value
+{@value_aggregate == 'median'} ? {
+		,ROW_NUMBER() OVER (
+			PARTITION BY cohort.@row_id_field,
+				measurement.measurement_concept_id,
+				COALESCE(measurement.unit_concept_id, 0),
+				FLOOR(DATEDIFF(@time_part, measurement.measurement_date, cohort.cohort_start_date) * 1.0 / @time_interval)
+			ORDER BY measurement.value_as_number
+			) AS value_rank
+		,COUNT(*) OVER (
+			PARTITION BY cohort.@row_id_field,
+				measurement.measurement_concept_id,
+				COALESCE(measurement.unit_concept_id, 0),
+				FLOOR(DATEDIFF(@time_part, measurement.measurement_date, cohort.cohort_start_date) * 1.0 / @time_interval)
+			) AS value_count
+}
+	FROM @cohort_table cohort
+	INNER JOIN @cdm_database_schema.measurement
+		ON cohort.subject_id = measurement.person_id
+	WHERE measurement.measurement_date <= DATEADD(DAY, @sequence_end_day, cohort.cohort_start_date)
+		AND measurement.measurement_date >= DATEADD(DAY, @sequence_start_day, cohort.cohort_start_date)
+		AND measurement.measurement_concept_id != 0
+		AND measurement.value_as_number IS NOT NULL
+@cohort_id_clause
+	) values_in_interval
+GROUP BY row_id,
+	measurement_concept_id,
+	unit_concept_id,
+	time_id;
+
+-- One unit per (row, concept, interval), the lowest, so the invariant the
+-- no-value analysis and everything downstream rely on still holds: one record
+-- per concept per interval. Ordering on the COALESCEd unit rather than the raw
+-- column also makes the choice dialect independent - an unmapped unit is 0
+-- here, where a raw NULL sorts first on SQL Server and last on PostgreSQL.
 IF OBJECT_ID('tempdb..#mvu_val', 'U') IS NOT NULL
 	DROP TABLE #mvu_val;
 
@@ -63,32 +130,26 @@ SELECT row_id,
 	time_id
 INTO #mvu_val
 FROM (
-	SELECT cohort.@row_id_field AS row_id,
-		measurement.measurement_concept_id,
+	SELECT agg.row_id,
+		agg.measurement_concept_id,
 		meas_cov.covariate_id,
-		measurement.value_as_number AS covariate_value,
-		CAST(FLOOR(DATEDIFF(@time_part, measurement.measurement_date, cohort.cohort_start_date) * 1.0 / @time_interval) AS INT) AS time_id,
+		agg.covariate_value,
+		agg.time_id,
 		ROW_NUMBER() OVER (
-			PARTITION BY cohort.@row_id_field,
-				measurement.measurement_concept_id,
-				FLOOR(DATEDIFF(@time_part, measurement.measurement_date, cohort.cohort_start_date) * 1.0 / @time_interval)
-			ORDER BY measurement.measurement_date DESC,
-				measurement.unit_concept_id,
-				measurement.value_as_number
+			PARTITION BY agg.row_id,
+				agg.measurement_concept_id,
+				agg.time_id
+			ORDER BY agg.unit_concept_id
 			) AS rn
-	FROM @cohort_table cohort
-	INNER JOIN @cdm_database_schema.measurement
-		ON cohort.subject_id = measurement.person_id
+	FROM #mvu_agg agg
 	INNER JOIN #mvu_cov meas_cov
-		ON meas_cov.measurement_concept_id = measurement.measurement_concept_id
-			AND meas_cov.unit_concept_id = COALESCE(measurement.unit_concept_id, 0)
-	WHERE measurement.measurement_date <= DATEADD(DAY, @sequence_end_day, cohort.cohort_start_date)
-		AND measurement.measurement_date >= DATEADD(DAY, @sequence_start_day, cohort.cohort_start_date)
-		AND measurement.measurement_concept_id != 0
-		AND measurement.value_as_number IS NOT NULL
-@cohort_id_clause
+		ON meas_cov.measurement_concept_id = agg.measurement_concept_id
+			AND meas_cov.unit_concept_id = agg.unit_concept_id
 	) temp
 WHERE rn = 1;
+
+TRUNCATE TABLE #mvu_agg;
+DROP TABLE #mvu_agg;
 
 -- The measurements with no numeric value at all, one covariate per (row,
 -- concept, interval), and only where that interval produced no value covariate

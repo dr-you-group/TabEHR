@@ -49,6 +49,12 @@
 # analysis id, not on the cohort, so every extraction in a folder shares it.
 .measurementValueUnitRefFile <- "measurementValueUnitRef.csv"
 
+# The SQL aggregate each name stands for. median is not a portable aggregate -
+# SQL Server has PERCENTILE_CONT as a window function only - so the SQL takes
+# the middle value by rank instead, which renders on every dialect.
+.valueAggregateFunctions <- c(min = "MIN", max = "MAX", mean = "AVG",
+                              median = "AVG")
+
 #' Settings for the measurement covariates
 #'
 #' A custom FeatureExtraction covariate builder for the measurements of a
@@ -72,6 +78,14 @@
 #'   [FeatureExtraction::createTemporalSequenceCovariateSettings()].
 #' @param sequenceStartDay,sequenceEndDay The covariate window, in days
 #'   relative to the index date.
+#' @param valueAggregate How several values of one concept in one interval
+#'   become one covariate value: `"min"`, `"max"`, `"mean"` or `"median"`. The
+#'   aggregate is taken within a unit, never across two, and the lowest unit of
+#'   the interval is the one kept. `"min"` is the default because it reproduces
+#'   what FeatureExtraction's own `MeasurementValue.sql` does to a day: its
+#'   `ORDER BY measurement_date DESC, unit_concept_id, value_as_number` cannot
+#'   discriminate on the first key inside one day, so it keeps the lowest
+#'   value.
 #' @param analysisId Analysis id of the measurements with a numeric value.
 #' @param noValueAnalysisId Analysis id of the measurements without one. Both
 #'   default into the 99x block, which is free in both of FeatureExtraction's
@@ -85,8 +99,10 @@ createMeasurementValueUnitCovariateSettings <- function(timePart = "day",
                                                         sequenceStartDay = -99999,
                                                         sequenceEndDay = 0,
                                                         analysisId = 998,
-                                                        noValueAnalysisId = 999) {
+                                                        noValueAnalysisId = 999,
+                                                        valueAggregate = "min") {
   checkmate::assertString(timePart, min.chars = 1)
+  checkmate::assertChoice(valueAggregate, names(.valueAggregateFunctions))
   checkmate::assertInt(timeInterval, lower = 1)
   checkmate::assertInt(sequenceStartDay)
   checkmate::assertInt(sequenceEndDay)
@@ -111,7 +127,8 @@ createMeasurementValueUnitCovariateSettings <- function(timePart = "day",
     sequenceStartDay = sequenceStartDay,
     sequenceEndDay = sequenceEndDay,
     analysisId = analysisId,
-    noValueAnalysisId = noValueAnalysisId
+    noValueAnalysisId = noValueAnalysisId,
+    valueAggregate = valueAggregate
   )
   attr(settings, "fun") <- "SparseArray::getDbMeasurementValueUnitCovariateData"
   class(settings) <- "covariateSettings"
@@ -209,6 +226,9 @@ getDbMeasurementValueUnitCovariateData <- function(connection,
     cohort_id_clause = cohortIdClause,
     analysis_id = settings$analysisId,
     no_value_analysis_id = settings$noValueAnalysisId,
+    value_aggregate = settings$valueAggregate,
+    value_aggregate_function =
+      .valueAggregateFunctions[[settings$valueAggregate]],
     time_part = toupper(settings$timePart),
     time_interval = settings$timeInterval,
     sequence_start_day = settings$sequenceStartDay,
@@ -271,11 +291,16 @@ getDbMeasurementValueUnitCovariateData <- function(connection,
 # construction rather than by agreement.
 #' @noRd
 .measurementValueUnitSettings <- function(args) {
+  # valueAggregate is the one argument of this builder that a settings block
+  # chooses rather than inherits from the window, so it falls back to the
+  # constructor default when the block is silent.
+  aggregate <- args[["measurementValueAggregate"]]
   createMeasurementValueUnitCovariateSettings(
     timePart = args[["timePart"]],
     timeInterval = args[["timeInterval"]],
     sequenceStartDay = args[["sequenceStartDay"]],
-    sequenceEndDay = args[["sequenceEndDay"]]
+    sequenceEndDay = args[["sequenceEndDay"]],
+    valueAggregate = if (is.null(aggregate)) "min" else aggregate
   )
 }
 

@@ -10,7 +10,8 @@ createMeasurementValueUnitCovariateSettings(
   sequenceStartDay = -99999,
   sequenceEndDay = 0,
   analysisId = 998,
-  noValueAnalysisId = 999
+  noValueAnalysisId = 999,
+  valueAggregate = "min"
 )
 }
 \arguments{
@@ -28,6 +29,14 @@ relative to the index date.}
 \item{noValueAnalysisId}{Analysis id of the measurements without one. Both
 default into the 99x block, which is free in both of FeatureExtraction's
 prespecified analysis sets.}
+
+\item{valueAggregate}{How several values of one concept in one interval become
+one covariate value: \code{"min"}, \code{"max"}, \code{"mean"} or \code{"median"}. The
+aggregate is taken within a unit, never across two, and the lowest unit of the
+interval is the one kept. \code{"min"} is the default because it reproduces what
+FeatureExtraction's own \code{MeasurementValue.sql} does to a day: its
+\code{ORDER BY measurement_date DESC, unit_concept_id, value_as_number} cannot
+discriminate on the first key inside one day, so it keeps the lowest value.}
 }
 \value{
 An object of class \code{covariateSettings} carrying the \code{fun} attribute

@@ -12,6 +12,11 @@ test_that("the settings objects carry their class and defaults", {
   # basis and the rows being binned are the same set.
   expect_identical(settings$quantileSettings$basis, "all")
   expect_null(settings$personSampleSettings$samplePersonCount)
+  # The day aggregate of a measurement value. "min" is what
+  # FeatureExtraction's own rule reduces to inside a day, so the default
+  # leaves the extraction as it was.
+  expect_identical(settings$allRecordsSettings$measurementValueAggregate,
+                   "min")
   expect_identical(settings$populationSettings$lengthOfStayOperator, ">=")
   expect_equal(settings$populationSettings$minAdmissionLengthOfStay, 2)
   # The admission criterion is counted but not applied: on MIMIC it cost most
@@ -25,6 +30,7 @@ test_that("bad settings are refused where they are made", {
   expect_error(createPopulationSettings(lengthOfStayOperator = "<"))
   expect_error(createPopulationSettings(minRecordCount = 0))
   expect_error(createPopulationSettings(requireQualifyingAdmission = NA))
+  expect_error(createAllRecordsSettings(measurementValueAggregate = "p95"))
   expect_error(createPersonSplitSettings(pretrainTrainFraction = 0.9),
                "sum to 1")
   expect_error(createQuantileSettings(basis = "file"))
@@ -62,6 +68,9 @@ test_that("settings survive a JSON round trip unchanged", {
       requireQualifyingAdmission = TRUE, lengthOfStayOperator = ">"
     ),
     personSplitSettings = createPersonSplitSettings(seed = 7),
+    allRecordsSettings = createAllRecordsSettings(
+      measurementValueAggregate = "median"
+    ),
     personSampleSettings = createPersonSampleSettings(samplePersonCount = 25)
   )
   file <- tempfile(fileext = ".json")

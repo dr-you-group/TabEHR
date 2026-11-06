@@ -20,7 +20,9 @@
 EHR foundation model 연구를 하고 있다.
 
 - **Pretraining**: OMOP CDM으로 변환된 MIMIC-IV에서 환자의 진단·약물·검사·시술 기록 시퀀스로 모델을 새로 pretraining한다. 전처리는 MedRep의 `create_trajectory.py` 로직을 기반으로 한다.
-- **Downstream 평가**: 사망, 장기 재원, 재입원, 입원 진단군(phenotype), 퇴원 후 1년 이내 신규 진단 같은 예측 task로 평가한다. task 정의(index date, 관찰 구간, TAR, outcome)는 SparseArray의 정의를 쓰고, input은 `allrecords`를 그 정의대로 걸러 만든다.
+- **Downstream 평가**: 예측 task로 평가한다. task 정의(index date, 관찰 구간, TAR, outcome)는 SparseArray에서 옮겨 온 정의를 쓰고, input은 `allrecords`를 그 정의대로 걸러 만든다.
+
+> **2026-11-05 결정 변경 (지도교수 지시)**: downstream task를 전면 교체했다. **`readmit`(퇴원 후 30일 재입원) 하나만 남기고** 사망(2)·장기 재원(1)·phenotype(27)을 모두 없앴다. 대신 참고 표(Supplementary Table 1)의 **21개 질환에 대한 "퇴원 후 1년 내 첫 진단"** task를 만든다. outcome은 **ICD-10 → SNOMED(`Maps to`) → descendant** 로 정의하고, condition·observation·procedure 세 도메인을 본다. 따라서 아래 본문의 "38개 task", "extraction 3개", "SparseArray의 cohort 정의는 바꾸지 않는다"는 **지금은 22개 task, extraction 1개(`target1003_discharge`)**로 읽어야 한다. 없앤 cohort SQL은 지우지 않고 `SparseArray/extras/retired_cohort_sql/`에 보관했다. 자세한 내용과 실행 순서는 `OPEN_QUESTIONS.md` K4.
 - **외부 검증**: 실제로 중요한 성능은 원내 CDM(YUHS 등)이다. MIMIC은 개발 편의를 위한 데이터라, 모든 코드가 **원내 CDM에서도 스키마만 바꿔서 그대로 돌아가야** 한다.
 
 ## 2. 현재 상황과 문제
@@ -112,7 +114,8 @@ MedRep 논문에는 "EHR foundation model은 종단 기록에 의존하므로 2�
   - `value_as_number`와 `unit_concept_id`는 측정값 covariate(998)에만 채우고, cond/drug/proc와 값 없는 측정(999)은 **NULL**이다. 단위가 모호한 covariate(아래)도 `unit_concept_id`를 NULL로 두고 건수를 리포트에 남긴다.
   - **bin(분위수)으로 바꾸지 않는다.** 원값 그대로다.
 - **concept 필터**: FE의 `DomainConcept.sql`과 동일하게 `concept_id <> 0`만. `standard_concept`·`invalid_reason`·도메인 일치 필터는 두지 않는다.
-- **검사 중복**: SparseArray와 같은 규칙, 즉 **(rowId, concept, 하루) 1건이고 그날의 마지막 값**이다(날짜 내림차순 → unit → value 순). MedRep 원래 규칙인 "시간당 1건"은 **쓰지 않는다.** 한 concept이 한 날에 두 단위로 측정되면 FE 규칙대로 **1건만** 남는다.
+- **검사 중복**: **(rowId, concept, 하루) 1건**이다. MedRep 원래 규칙인 "시간당 1건"은 **쓰지 않는다.** 한 concept이 한 날에 두 단위로 측정되면 **1건만** 남는다.
+  > **2026-11-06 정정·확장**: 이 줄에 "그날의 마지막 값(날짜 내림차순 → unit → value)"이라고 적혀 있었으나 **사실이 아니었다.** FE에서 물려받은 그 `ORDER BY`의 첫 키 `measurement_date DESC`는 `measurement_date`가 DATE라 하루 안에서 아무것도 가르지 못하고, 결과적으로 **최저 단위의 최솟값**이 뽑혔다. 이제 이 집계를 설정으로 노출한다 — `createAllRecordsSettings(measurementValueAggregate = )`에 `min`(기본, 기존 동작과 동일)·`max`·`mean`·`median`. 집계는 **단위 안에서** 계산하고 그 구간의 **최저 단위**를 남기므로 "concept·하루당 1건" 불변식은 그대로다. 자세한 내용은 `OPEN_QUESTIONS.md` K7.
 - **이 프로젝트의 커스텀 covariate 분석 두 개** (`99x`는 우리 블록. FE는 두 prespec 집합 모두 최대 926이라 충돌하지 않는다):
 
   | analysisId | 이름 | covariate_id | 내용 |
@@ -140,7 +143,7 @@ MedRep 논문에는 "EHR foundation model은 종단 기록에 의존하므로 2�
 
 - **input**: `allrecords`를 task의 index date와 관찰 구간(`sequenceStartDay`~`sequenceEndDay`)으로 걸러 만든다. 관찰 구간은 `sequenceEndDay = 0`이므로 index 당일을 포함한다(SparseArray와 같은 규칙).
 - **population**: task 설정(TAR, prior outcome, washout, requireTimeAtRisk 등)에 따라 **어떤 입원(rowId)이 대상인지**가 걸러진다. 이 판정은 PLP의 `createStudyPopulation()`이 하고, 그 결과가 label 파일이다. **TAR은 input의 기록을 거르는 기준이 아니다**(index 이후 구간이므로 누출이 된다).
-- input은 task별이 아니라 **extraction별**로 만든다. 관찰 구간은 covariateSettings 블록이, index date는 targetId가 정하므로 38개 task가 실제로는 3개(`target1000_admission`, `target1000_admissionNoCondition`, `target1003_discharge`)만 필요하다. label만 task별이다.
+- input은 task별이 아니라 **extraction별**로 만든다. 관찰 구간은 covariateSettings 블록이, index date는 targetId가 정하므로 task 수와 무관하게 extraction은 적다. 2026-11-05 교체 이후에는 22개 task가 **1개**(`target1003_discharge`)를 공유한다. label만 task별이다.
 - 대상은 downstream 환자뿐이다(target cohort SQL의 `WHERE EXISTS`로 제한).
 
 ### 환자 분할
@@ -154,7 +157,7 @@ MedRep 논문에는 "EHR foundation model은 종단 기록에 의존하므로 2�
 
 ### SparseArray
 
-**SparseArray에는 데이터를 추출하는 기능만 남긴다.** task 정의는 연구 정의이므로 TabEHR이 갖는다. cohort 정의(`CohortsToCreate.csv`와 38개 phenotype SQL), covariate 설정, 출력 형식은 바꾸지 않는다 — 논의를 거쳐 확정된 정의다.
+**SparseArray에는 데이터를 추출하는 기능만 남긴다.** task 정의는 연구 정의이므로 TabEHR이 갖는다. cohort 정의(`CohortsToCreate.csv`와 cohort SQL), covariate 설정, 출력 형식은 임의로 바꾸지 않는다. (2026-11-05: 지도교수 지시로 outcome cohort 집합 자체가 교체되었다. 생성 스크립트는 `SparseArray/extras/MakeNewDxCohortSql.R`, 보관은 `extras/retired_cohort_sql/`.)
 
 | SparseArray에 남는 것 | TabEHR으로 옮기는 것 |
 |---|---|

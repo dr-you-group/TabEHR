@@ -67,7 +67,7 @@ the rows and the observation window of that extraction.
 \details{
 The input is written per extraction rather than per task, because the
 observation window comes from the covariate settings block and the index
-date from the target cohort: the 38 tasks of this study share three. The
+date from the target cohort: the 22 tasks of this study share one. The
 labels stay per task, in \code{outcomeLabels.csv}, because the time at risk and
 the prior outcome criteria differ.
 

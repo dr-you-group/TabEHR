@@ -35,6 +35,15 @@
 #                            crosswalk that makes the unit recoverable
 .customAnalysisArgNames <- c("useMeasurementValueUnit")
 
+# Arguments of those builders that are not flags: they configure an analysis
+# rather than ask for one, so .customAnalyses() must not read them as a
+# request, and FeatureExtraction's constructor must not see them either.
+#
+#   measurementValueAggregate  how several values of one concept in one
+#                              interval become one, see
+#                              createMeasurementValueUnitCovariateSettings()
+.customAnalysisOptionNames <- c("measurementValueAggregate")
+
 #' @noRd
 .customAnalyses <- function(args) {
   named <- .customAnalysisArgNames[.customAnalysisArgNames %in% names(args)]
@@ -43,7 +52,8 @@
 
 #' @noRd
 .stripCustomAnalysisArgs <- function(args) {
-  args[!names(args) %in% .customAnalysisArgNames]
+  args[!names(args) %in% c(.customAnalysisArgNames,
+                           .customAnalysisOptionNames)]
 }
 
 #' @noRd

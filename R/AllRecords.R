@@ -38,6 +38,14 @@
 #'   [SparseArray::createMeasurementValueUnitCovariateSettings()].
 #'   FeatureExtraction's own `useMeasurement` cannot be combined with it, see
 #'   [SparseArray::buildCovariateSettings()].
+#' @param measurementValueAggregate How several values of one measurement
+#'   concept on one day become the one value `allrecords` keeps: `"min"`,
+#'   `"max"`, `"mean"` or `"median"`. The aggregate is taken within a unit,
+#'   never across two, and the lowest unit of the day is the one kept.
+#'   `"min"` is the default because it is what FeatureExtraction's own rule
+#'   reduces to inside a day. Changing it changes `allrecords` itself, so the
+#'   task inputs, the measurement quantiles and the MedRep tokens all have to
+#'   be rebuilt with it.
 #'
 #' @return An object of class `tabehrAllRecordsSettings`.
 #' @export
@@ -46,20 +54,24 @@ createAllRecordsSettings <- function(cohortId = 1100,
                                      useConditionOccurrence = TRUE,
                                      useDrugExposure = TRUE,
                                      useProcedureOccurrence = TRUE,
-                                     useMeasurementValueUnit = TRUE) {
+                                     useMeasurementValueUnit = TRUE,
+                                     measurementValueAggregate = "min") {
   checkmate::assertInt(cohortId, lower = 1)
   checkmate::assertInt(timeInterval, lower = 1)
   checkmate::assertFlag(useConditionOccurrence)
   checkmate::assertFlag(useDrugExposure)
   checkmate::assertFlag(useProcedureOccurrence)
   checkmate::assertFlag(useMeasurementValueUnit)
+  checkmate::assertChoice(measurementValueAggregate,
+                          c("min", "max", "mean", "median"))
   settings <- list(
     cohortId = as.numeric(cohortId),
     timeInterval = as.numeric(timeInterval),
     useConditionOccurrence = useConditionOccurrence,
     useDrugExposure = useDrugExposure,
     useProcedureOccurrence = useProcedureOccurrence,
-    useMeasurementValueUnit = useMeasurementValueUnit
+    useMeasurementValueUnit = useMeasurementValueUnit,
+    measurementValueAggregate = measurementValueAggregate
   )
   class(settings) <- "tabehrAllRecordsSettings"
   settings
@@ -79,7 +91,8 @@ createAllRecordsSettings <- function(cohortId = 1100,
     useConditionOccurrence = settings$useConditionOccurrence,
     useDrugExposure = settings$useDrugExposure,
     useProcedureOccurrence = settings$useProcedureOccurrence,
-    useMeasurementValueUnit = settings$useMeasurementValueUnit
+    useMeasurementValueUnit = settings$useMeasurementValueUnit,
+    measurementValueAggregate = settings$measurementValueAggregate
   )
 }
 

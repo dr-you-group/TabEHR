@@ -4,7 +4,7 @@
 
 - 상태: `해결` = 결정 반영 / `실행 확인 완료` = 실제 산출물 또는 DB로 검증 /
   `일부 확인` = 확인 범위에 한계가 있음 / `답 대기` = 연구·구현 방향 결정 필요
-- 마지막 갱신: 2026-10-27 (K절)
+- 마지막 갱신: 2026-11-05 (K절)
 
 ## 2026-10-24 확인 범위
 
@@ -608,6 +608,15 @@ H3·I6의 미해결 항목이다. `extras/CreateMedRepFiles.R`에서 세 가지�
 또 `%>%`와 `.data`를 쓰던 부분을 `dplyr::`·`rlang::`로 바꿨다. TabEHR은 둘을 import만
 하고 export하지 않아서, `library(TabEHR)`만 붙인 `Rscript` 실행에서는 없는 이름이었다.
 
+**2026-11-06**: 스크립트를 **하나로 합쳤다.** 한동안 두 벌
+(Andromeda를 읽는 원본과 `allrecords.csv.gz`를 읽는 후보)을 나란히 두었는데,
+출력이 같다는 것이 구조적으로 보장되므로 **CSV 스트리밍 쪽만 남기고**
+`extras/CreateMedRepFiles.R`라는 원래 이름을 그대로 쓴다. 그래서 문서·주석의 경로
+참조는 모두 유효하다. 없어진 쪽이 하던 일(SQLite 전체 정렬, covariate→concept 조인,
+행마다의 `format(Date)`)은 남은 쪽에서 아예 발생하지 않는다. 남은 쪽에만 있는 것:
+staging 파일 + rename, 입력 헤더 검증, `rows=` 테스트 모드, 변환 리포트
+(`conversion_report.csv`).
+
 **아직 하지 않은 것**: 실제 DB의 `allrecords`로 실행해 분위표·토큰을 확인하는 일.
 사용자 환경에서 실행한 결과를 받아야 I6을 닫을 수 있다.
 
@@ -636,3 +645,203 @@ PLP가 index date 기준으로 계산한 `ageYear`·`gender`가 rowId별로 들�
 allrecords 추출에 demographics를 켜는 길은 애초에 막혀 있다: 그 추출의 index date는 환자의
 마지막 기록일이어서 나이가 전 기간 사건에 붙일 수 없는 값이고,
 `.allRecordsCovariateMap()`이 도메인에 배치할 수 없는 analysis id를 오류로 막는다.
+
+### K4. downstream task 전면 교체 (status: 코드 수정, 실행 대기)
+
+> 지도교수 지시: 기존 downstream task는 **re-admission만 남기고** 전부 없앤다.
+> 첨부 표(Supplementary Table 1)의 질환들을 대상으로 **퇴원 후 1년 내 첫 진단**
+> task를 만든다. outcome은 **ICD-10 → SNOMED 변환 후 그 SNOMED의 descendant**로
+> 잡는다.
+
+**없앤 것 (30개 task)**
+
+| task | 수 | cohort |
+|---|---|---|
+| `death7`, `death30` | 2 | 1001 Death |
+| `longStay` | 1 | 1002 Long_length_of_stay |
+| `phenotype2001`~`phenotype2027` | 27 | 2001–2027 (CCSR 진단군) |
+
+cohort SQL은 **지우지 않고** `SparseArray/extras/retired_cohort_sql/`로 옮겼다
+(27개 phenotype + Death + Long_length_of_stay + 기존 new_diagnoses 7개 = 36개).
+`inst/sql/sql_server/`에서 빠졌으므로 `createCohorts()`가 더 이상 만들지 않고,
+`CohortsToCreate.csv`에서도 해당 행을 뺐다. 되살리는 방법은 그 폴더의
+`README.md`에 적었다.
+
+**남긴 것**: `readmit` (target 1003, outcome 1000, TAR 1–30일). cohort 1000·1003은
+그대로 쓴다.
+
+**새로 만든 것**: 21개 질환의 `newDx` task (cohort id **3101–3121**). task 설정은
+기존 newDx와 **동일**하다 — target 1003(퇴원일 index), `discharge` covariate
+설정, `removeSubjectsWithPriorOutcome = TRUE`, TAR 1–365일, `minTimeAtRisk = 364`.
+질병 목록만 바뀌었다.
+
+| 결정 | 내용 |
+|---|---|
+| All-CauseMortality | **제외.** 표의 마지막 행은 진단이 아니라 death 테이블 기반이고, "퇴원 후 1년 내 첫 진단"이라는 task 정의에 맞지 않는다. 필요해지면 별도 cohort로 추가한다 |
+| ICD-10 코드 매칭 | **표에 적힌 그대로.** 3자리(`J45`)는 3자리로, 4자리(`I20.0`)는 그대로 조회한다. 확장은 ICD 쪽이 아니라 **SNOMED descendant**가 한다. `H40-H42`만 `H40 H41 H42`로 전개했다 |
+| vocabulary | **`ICD10`(WHO)만.** `ICD10CM`은 `sourceVocabularies` 설정값으로 열어 뒀다 |
+| 도메인 | condition **+ observation + procedure**. `Z99.2`(투석 의존), `Z71.4`(알코올 상담)처럼 OMOP이 condition으로 분류하지 않는 코드가 있어, condition만 보면 조용히 사라진다. 전용 템플릿 `extras/NewDxCohortTemplate.sql`을 만들었다 |
+| cohort id | 3001–3007을 재사용하지 않고 **3101부터** 새로 매겼다. DB의 cohort 테이블에 이전 정의로 만든 행이 남아 있을 수 있어 같은 id를 다른 뜻으로 쓰면 안 된다 |
+
+**따라오는 결과**: extraction이 `target1003_discharge` **하나만** 남는다(이전 3개).
+`admission`·`admissionNoCondition` covariate 블록은 쓰이지 않아 제거했다.
+`allrecords`는 그대로 쓰므로 재추출 대상은 task input뿐이다.
+
+**실행 순서** (1번만 DB 필요)
+
+```bash
+cd SparseArray
+Rscript extras/AddSnomedToNewDxCsv.R    # ICD-10 → SNOMED, 매핑 리포트 3개
+Rscript extras/MakeNewDxCohortSql.R     # cohort SQL 21개 + CohortsToCreate.csv
+cd ..
+Rscript extras/MakeStudySettingsJson.R  # studySettings.json 재생성
+```
+
+**표와 달라진 코드 2개** (2026-11-05 사용자 확인, `newdx_icd10.csv`의 `Note` 열에 사유 기록)
+
+| outcome | 표 | 우리 | 사유 |
+|---|---|---|---|
+| Glaucoma | `H40-H42` | `H40 H42` | **H41은 ICD-10에서 할당되지 않은 자리**다. 녹내장은 H40과 H42(달리 분류된 질환에서의 녹내장)뿐 |
+| AlcoholUseDisorder | `G40.51` 포함 | 제외 (15개 코드) | **ICD-10에도 ICD-10-CM에도 없는 코드**다(표의 출처가 국가 수정판을 쓴 것으로 보인다). 상위 `G40.5`로 넓히지 않았다: WHO의 G40.5는 "Special epileptic syndromes"로 약물·호르몬·수면박탈 유발 발작까지 포함해 알코올 전용이 아니고, Epilepsy outcome이 `G40` 전체라 두 outcome이 겹치게 된다. CM에도 알코올 특정 발작 코드는 없다 |
+
+**아직 확인하지 못한 것**: ICD-10 → SNOMED 매핑 결과. Athena API는 인증이 걸려
+있어(403) 개발 환경에서 조회할 수 없었고, 매핑은 사용자 DB의 vocabulary에서만
+확인된다. 그래서 `AddSnomedToNewDxCsv.R`이 세 가지를 **코드 단위로 보고**하게
+했다: vocabulary에 없는 코드, `Maps to`가 없는 코드, 대상 domain이 cohort
+템플릿이 보지 않는 코드. `codes/newdx_icd10_report.csv`를 먼저 읽고 cohort를
+만들어야 한다. 특히 다음이 남아 있다.
+
+- `O87.1`, `O88.2`, `O35.4`, `P04.3` — 산과·신생아 코드라 MIMIC 성인 코호트에서 건수 0일 수 있다
+
+**domain 확인 완료** (2026-11-05 사용자 조회): `Y84.1` Condition, `Z99.2`
+**Observation**, `Z71.4` **Procedure**, `T51` Condition. 네 개 모두
+`NewDxCohortTemplate.sql`이 읽는 세 도메인 안에 들어오므로 유실이 없다. condition
+전용 템플릿이었다면 CKD는 `Z99.2`를, AlcoholUseDisorder는 `Z71.4`를 잃었을 것이다.
+
+그 귀결로 **두 outcome은 진단 기록이 아닌 것으로도 발생한다**: CKD는 투석 의존
+observation, AlcoholUseDisorder는 상담 procedure. 표의 코드를 그대로 쓰기로 한
+결정을 따른 것이며, "진단만"으로 좁히려면 그 두 코드를 빼면 된다.
+
+표가 `CoronaryHeartDisease`(I21·I22 포함)와 `MyocardialInfarction`(I21·I22)을
+모두 담고 있어 두 outcome은 **포함 관계**다. 원 논문 정의 그대로 둔다.
+
+**현재 `studySettings.json`은 21개가 모두 매핑된다고 가정하고 쓴 것**이다. 매핑
+후 `MakeStudySettingsJson.R`을 다시 돌려 실제 등록된 cohort로 덮어써야 한다.
+
+### K5. 창 단위 covariate 집계 (status: 코드 수정, 실데이터 실행 대기)
+
+> 사용자 요청: taskInput은 하루 단위 기록인데, FeatureExtraction의 longTerm·
+> mediumTerm·shortTerm처럼 구간 안에 covariate가 하나라도 있으면 1, 없으면 0으로
+> 전처리하고, measurement value도 구간당 값 하나가 나오게 한다. `execute()` 출력을
+> 후처리하는 형태로 `extras/`에 둔다.
+
+`extras/MakeWindowCovariates.R`를 만들었다. DB가 필요 없고 재추출도 하지 않는다.
+`taskInput/<extraction>/input.csv.gz`를 스트리밍으로 읽어
+`windowCovariates.csv.gz`(+ 참조 파일 3개)를 같은 폴더에 쓴다.
+
+| 결정 | 내용 |
+|---|---|
+| analysis·covariate id | **FE v3.2.0의 비-temporal 체계를 그대로** 쓴다: Condition 102/103/104, Drug 302–304, Procedure 502–504, Measurement 702–704, MeasurementValue 706–708. id 공식도 FE의 것(`concept*1000 + analysis`, 값은 `concept*1000000 + (unit%1000)*1000 + analysis`). **일 단위 추출의 998/999와는 다른 id 공간**이고, 섞으면 안 되므로 참조 파일에 `concept_id`·`unit_concept_id`를 따로 싣는다 |
+| 기본 창 | `longTerm` −365~0, `mediumTerm` −180~0, `shortTerm` −30~0 (FE `createCovariateSettings()`의 기본값). 스크립트 맨 위 `windows` 목록을 고치면 되고 `anyTimePrior`도 한 줄이다 |
+| 창의 끝 | `endDay > 0`은 **에러로 막는다.** index 이후 구간은 taskInput에 애초에 없고, 있다면 outcome 누출이다 |
+| 이진 covariate | 구간 안에 기록이 하나라도 있으면 1. **없으면 행을 쓰지 않는다**(sparse = 없으면 0) |
+| 측정값 | 구간 안 **가장 최근 '값이 있는' 기록**의 값. FE `MeasurementValue.sql`이 `value_as_number IS NOT NULL`만 보므로, 더 최근의 값 없는 기록이 이전 값을 가리지 않는다. 자가 테스트로 확인했다(2일 전 값 없음 / 10일 전 7.5 / 40일 전 9.1 → 세 창 모두 **7.5**) |
+| 동점 | 입력이 이미 (row, concept, 하루) 1건으로 줄어 있어 FE의 2·3순위 키(unit, value)가 발동할 일이 없다. "파일 순서의 첫 행 = 가장 최근"으로 결정된다 |
+| 측정의 이진 covariate | 값 있는 측정도 702~704(측정을 했다) + 706~708(그 값) **둘 다** 만든다. FE에서 두 플래그를 켠 것과 같다. `measurementBinary <- FALSE`로 값만 남길 수 있다 |
+
+입력이 `row_id` → `time_id` 오름차순으로 정렬돼 있다는 성질(`.writeTaskInput()`의
+`arrange`)을 이용해 **환자 1행씩 스트리밍**으로 집계한다. 청크 경계에 걸친
+`row_id`는 다음 청크로 넘겨 모아 처리하므로 정렬이나 전체 적재가 필요 없다.
+
+`row_id`가 `outcomeLabels.csv`와 그대로 조인되므로, extraction 하나에서 나온 창
+파일 하나가 그 extraction을 공유하는 **모든 task에 쓰인다**(현재 22개 전부).
+
+**검증**: 합성 데이터로 자가 테스트 완료 — 창 밖(400일) 기록 제외, 기록이 창 밖에만
+있는 환자는 행 0개, 값 covariate의 "가장 최근 유효값" 규칙, 청크 경계 분할(chunk=3),
+`rows=` 테스트 모드가 실제 파일을 건드리지 않는 것, 실패 시 staging 정리까지 확인했다.
+실데이터 실행은 아직이다.
+
+### K6. MedRep 형식 label 파일 (status: 만들었다가 전부 삭제)
+
+> 사용자 요청: `visit_label.csv`처럼 `outcomeLabels.csv`로 labeling CSV를
+> `output/<db>/MedRep/labeling/`에 만든다. → **이후 철회: 만든 코드를 전부 지운다.**
+
+`extras/MakeMedRepLabels.R`를 만들었다가 삭제했다. 중간에 MedRep 토크나이저가
+label·기록·인구학 세 파일을 `person_id`만으로 조인하는 문제를 우리 쪽에서 풀려고
+instance 키(`<person_id>_<row_id>`), `allrecords_finetune.csv.gz`,
+`person_finetune.csv`, 와이드 다중 라벨 파일, `onePerPerson`·`rowId`·`wideRows`
+옵션까지 붙였는데, **MedRep 전처리 코드와의 호환은 이 패키지의 범위가 아니라고
+정리되어** 그 전체와 단순화한 변환 스크립트까지 모두 지웠다.
+
+**label의 정본은 `outcomeLabels.csv` 하나다.** 다시 만들지 말 것. 필요해지면
+그때 요구사항을 다시 받는다.
+
+조사해 둔 사실만 남긴다(다시 파지 않도록):
+
+- MedRep `visit_label.csv` = `person_id, prediction_timepoint, label, label_type`,
+  `label`은 텍스트 `True`/`False`, `prediction_timepoint`는 **index date + 1일**
+  (리더가 `record_datetime < prediction_timepoint`로 거른다)
+- `phenotypes.csv`는 `person_id, prediction_timepoint` + 라벨 열들이고
+  `tokenize_for_finetune.py`가 `iloc[:, 2:]`를 다중 라벨 벡터로 읽는다
+- 그 토크나이저는 label을 기록에 `person_id`**만으로** merge하고 인구학도
+  `genders.loc[person_id]`로 찾는다 → 환자당 prediction point가 둘 이상이면
+  키를 바꾸지 않는 한 중복이 생긴다
+
+### K7. 검사값 하루 집계를 설정으로 (status: 코드 수정, 실데이터 실행 대기)
+
+> 사용자 요청: 같은 concept이 하루에 여러 번 기록되면 지금은 가장 작은 값이 뽑히는데,
+> min·max·average·median 등으로 **집계 방식을 고를 수 있는 옵션**을 넣는다.
+
+`createAllRecordsSettings(measurementValueAggregate = )`로 노출했다. 값은
+`min`(기본)·`max`·`mean`·`median`.
+
+**왜 기본이 `min`인가**: 기존 동작과 같기 때문이다. 그리고 그 기존 동작은 **설계가
+아니라 상속의 부산물**이었다 — FE `MeasurementValue.sql`의
+`ORDER BY measurement_date DESC, unit_concept_id, value_as_number`를 그대로
+가져왔는데, 하루 단위 추출에서는 `measurement_date`가 DATE라 첫 키가 작동하지 않아
+세 번째 키(최솟값)만 남았다. `CLAUDE.md`에 "그날의 마지막 값"이라고 적혀 있던 설명은
+틀린 것이었고 같이 정정했다.
+
+**SQL 구조** (`SparseArray/inst/sql/sql_server/MeasurementValueUnit.sql`)
+
+1. `#mvu_agg`: `(row, concept, 단위, 구간)`별로 집계 → **단위를 절대 섞지 않는다.**
+   mg/dL와 mmol/L를 평균 내는 일이 없다
+2. `#mvu_val`: `(row, concept, 구간)`당 **최저 단위** 1건 → "concept·하루당 1건"
+   불변식 유지(999의 `NOT EXISTS`, MedRep 토큰, 창 covariate가 여기에 의존한다)
+
+`median`은 이식 가능한 집계 함수가 없어서(SQL Server의 `PERCENTILE_CONT`는 윈도우
+함수 전용이고 SqlRender 변환도 불확실) **순위로 가운데 값을 고르는 방식**으로 썼다:
+`ROW_NUMBER`/`COUNT` + `AVG(CASE WHEN rank IN ((n+1)/2, (n+2)/2) ...)`. 홀수면 가운데
+하나, 짝수면 가운데 둘의 평균이 된다.
+
+**부수 효과 하나 (의도한 수정)**: 단위 선택이 이제 `COALESCE(unit, 0)` 기준이라
+**방언에 무관**하다. 이전에는 raw `unit_concept_id`로 정렬해서 SQL Server는 NULL이
+먼저, PostgreSQL은 NULL이 마지막이었다(같은 날 NULL 단위와 매핑된 단위가 함께 있으면
+기관마다 다른 값이 뽑혔다). 이제 양쪽 모두 `0`(미매핑)이 최저로 먼저다. 즉
+**PostgreSQL에서는 일부 행의 선택 단위가 바뀐다.**
+
+**설정 경로**: `analysisSettings.json`(`allRecordsSettings.measurementValueAggregate`)
+→ `createAllRecordsSettings()` → `.allRecordsCovariateSettingsArgs()` →
+`SparseArray::buildCovariateSettings()`(`.customAnalysisOptionNames`로 FE 생성자에는
+넘기지 않고 걸러낸다) → `createMeasurementValueUnitCovariateSettings(valueAggregate =)`
+→ SQL의 `@value_aggregate`.
+
+`studySettings.json`의 `covariateSettings.discharge`에도 같은 키를 넣었다. task
+추출(`featureExtractionLong.csv`)이 `allrecords`와 다른 집계를 쓰면 안 되기 때문이고,
+**두 파일의 값을 일치시켜야 한다**는 주석을 생성기에 남겼다.
+
+**재실행 범위**: 값을 바꾸면 `allrecords` 자체가 바뀌므로 **4단계부터 전부**
+(`createAllRecords` → `createTaskInput` → 분위표·MedRep 토큰 → 창 covariate).
+1~3단계는 영향 없다.
+
+**창 집계는 바꾸지 않았다.** `extras/MakeWindowCovariates.R`는 여전히 창 안에서
+"가장 최근 값이 있는 기록"을 고른다(FE 규칙). 그래서 `longTerm` 값은 "집계 방식으로
+정해진 하루 대표값들 중 가장 최근 날의 것"이 된다. `min`일 때는 이 2단 구성이 FE의
+비-temporal `MeasurementValueLongTerm`과 결과가 정확히 같고, 다른 집계에서는 달라진다.
+
+**검증**: SqlRender가 로컬에 없어 `{DEFAULT}`·`{@x == 'v'} ? {} : {}`·`@param`만
+처리하는 최소 렌더러로 4가지 집계 × 양쪽 분기를 렌더해, 미해결 파라미터 0·미해결
+조건 블록 0·집계식(`MIN/MAX/AVG(CAST(...))`, median은 순위식)·median일 때만 순위 열
+생성을 확인했다. 설정 JSON 왕복과 잘못된 값 거부도 확인했다. `extras/CheckSqlRendering.R`에
+4가지 집계를 방언별로 렌더하는 블록을 추가했으니 **컨테이너에서 그것으로 재확인**해야
+한다. 실데이터 실행은 아직이다.

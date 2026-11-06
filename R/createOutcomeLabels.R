@@ -91,10 +91,13 @@
 #'     event or to the end of the window.}
 #' }
 #'
-#' @param outputFolder Folder holding the extractions saved by [createPlpData()],
+#' @param outputFolder Folder holding the extractions saved by
+#'   [SparseArray::extractPlpData()],
 #'   and where the label files are written.
 #' @param studySettingsFile JSON file written by [saveStudySettings()].
 #' @param cohortsToCreateFile CSV listing the cohorts, used to name the outcomes.
+#'   The cohort definitions live in SparseArray, so the default reads that
+#'   package's copy; without it the labels name an outcome by its cohort id.
 #' @param savePopulations Also save each `createStudyPopulation()` result as it
 #'   came back, under `outputFolder/studyPopulation`? The CSV keeps the columns
 #'   this package needs; the saved object additionally keeps `ageYear`,
@@ -114,7 +117,7 @@ createOutcomeLabels <- function(outputFolder,
                                 cohortsToCreateFile = system.file(
                                   "settings",
                                   "CohortsToCreate.csv",
-                                  package = "TabEHR"
+                                  package = "SparseArray"
                                 ),
                                 savePopulations = TRUE) {
   checkmate::assertString(outputFolder, min.chars = 1)

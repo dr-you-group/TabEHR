@@ -32,7 +32,8 @@
     "useConditionOccurrence": true,
     "useDrugExposure": true,
     "useProcedureOccurrence": true,
-    "useMeasurementValueUnit": true
+    "useMeasurementValueUnit": true,
+    "measurementValueAggregate": "min"
   },
   "quantileSettings": {
     "basis": "all",

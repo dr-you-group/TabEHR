@@ -1,0 +1,22 @@
+CohortId,Outcome,ICD10,Note
+3101,Asthma,J45 J46,
+3102,CoronaryHeartDisease,I20.0 I21 I22 I23 I24 I25 I46,
+3103,Depression,F32 F33,
+3104,KneeArthrosis,M17,
+3105,RheumatoidArthritis,M05 M06,
+3106,Type2Diabetes,E11,
+3107,Gout,M10,
+3108,Osteoporosis,M80 M81 M82,
+3109,AtrialFibrillation,I48,
+3110,VenousThromboembolism,I26 I80 O87.1 O88.2,
+3111,Coxarthrosis,M16,
+3112,ChronicKidneyDisease,N18 Y84.1 Z99.2,
+3113,Glaucoma,H40 H42,source table says H40-H42; H41 is unassigned in ICD-10
+3114,MyocardialInfarction,I21 I22,
+3115,HeartFailure,I11.0 I13.0 I13.2 I50,
+3116,Psoriasis,L40,
+3117,Stroke,I61 I63 I64,
+3118,SleepApnea,G47.3,
+3119,InflammatoryBowelDisease,K50 K51,
+3120,Epilepsy,G40,
+3121,AlcoholUseDisorder,F10 G31.2 G62.1 G72.1 I42.6 K29.2 K70 K85.2 K86.0 O35.4 P04.3 Q86.0 Z71.4 E24.4 T51,"source table also lists G40.51, which exists in neither ICD-10 nor ICD-10-CM; dropped rather than widened to G40.5, which is not alcohol specific and overlaps Epilepsy"

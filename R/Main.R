@@ -39,7 +39,7 @@
 #' @param checkDatabase Check the assumptions about the database first?
 #' @param extractRecords Extract the condition, drug, procedure and measurement
 #'   records?
-#' @param createStudyPopulation Apply the three study population criteria?
+#' @param createStudyPopulation Apply the study population criteria?
 #' @param createPersonSplit Split the patients into pretraining and downstream?
 #' @param createAllRecords Extract every record of every study population
 #'   patient, which is the reference data everything else is derived from?

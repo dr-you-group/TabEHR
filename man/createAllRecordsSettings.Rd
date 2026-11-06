@@ -10,7 +10,8 @@ createAllRecordsSettings(
   useConditionOccurrence = TRUE,
   useDrugExposure = TRUE,
   useProcedureOccurrence = TRUE,
-  useMeasurementValueUnit = TRUE
+  useMeasurementValueUnit = TRUE,
+  measurementValueAggregate = "min"
 )
 }
 \arguments{
@@ -27,6 +28,15 @@ those domains?}
 \code{\link[SparseArray:createMeasurementValueUnitCovariateSettings]{SparseArray::createMeasurementValueUnitCovariateSettings()}}.
 FeatureExtraction's own \code{useMeasurement} cannot be combined with it, see
 \code{\link[SparseArray:buildCovariateSettings]{SparseArray::buildCovariateSettings()}}.}
+
+\item{measurementValueAggregate}{How several values of one measurement
+concept on one day become the one value \code{allrecords} keeps: \code{"min"},
+\code{"max"}, \code{"mean"} or \code{"median"}. The aggregate is taken within a
+unit, never across two, and the lowest unit of the day is the one kept.
+\code{"min"} is the default because it is what FeatureExtraction's own rule
+reduces to inside a day. Changing it changes \code{allrecords} itself, so the
+task inputs, the measurement quantiles and the MedRep tokens all have to be
+rebuilt with it.}
 }
 \value{
 An object of class \code{tabehrAllRecordsSettings}.

@@ -1,0 +1,60 @@
+"icd10","cohortId","outcome","sourceCode","sourceConceptId","sourceName","sourceVocabulary","targetConceptId","targetName","targetDomain","targetVocabulary","targetStandard","usable"
+"J45","3101","Asthma","J45",45596282,"Asthma","ICD10",317009,"Asthma","Condition","SNOMED","S",TRUE
+"J46","3101","Asthma","J46",45591560,"Status asthmaticus","ICD10",37116845,"Acute severe refractory exacerbation of asthma","Condition","SNOMED","S",TRUE
+"I20.0","3102","CoronaryHeartDisease","I20.0",45586570,"Unstable angina","ICD10",315296,"Preinfarction syndrome","Condition","SNOMED","S",TRUE
+"I21","3102","CoronaryHeartDisease","I21",45538370,"Acute myocardial infarction","ICD10",312327,"Acute myocardial infarction","Condition","SNOMED","S",TRUE
+"I22","3102","CoronaryHeartDisease","I22",45562341,"Subsequent myocardial infarction","ICD10",4108217,"Subsequent myocardial infarction","Condition","SNOMED","S",TRUE
+"I23","3102","CoronaryHeartDisease","I23",45755428,"Certain current complications following acute myocardial infarction","ICD10",4176969,"Sequelae of cardiovascular disorders","Condition","SNOMED","S",TRUE
+"I24","3102","CoronaryHeartDisease","I24",45552782,"Other acute ischaemic heart diseases","ICD10",319844,"Acute ischemic heart disease","Condition","SNOMED","S",TRUE
+"I25","3102","CoronaryHeartDisease","I25",45581765,"Chronic ischaemic heart disease","ICD10",315286,"Chronic ischemic heart disease","Condition","SNOMED","S",TRUE
+"I46","3102","CoronaryHeartDisease","I46",45557545,"Cardiac arrest","ICD10",321042,"Cardiac arrest","Condition","SNOMED","S",TRUE
+"F32","3103","Depression","F32",45595904,"Depressive episode","ICD10",3656234,"Depressive episode","Observation","SNOMED","S",TRUE
+"F33","3103","Depression","F33",45576542,"Recurrent depressive disorder","ICD10",4098302,"Recurrent depression","Condition","SNOMED","S",TRUE
+"M17","3104","KneeArthrosis","M17",45601350,"Gonarthrosis [arthrosis of knee]","ICD10",4079750,"Osteoarthritis of knee","Condition","SNOMED","S",TRUE
+"M05","3105","RheumatoidArthritis","M05",45606038,"Seropositive rheumatoid arthritis","ICD10",4035611,"Seropositive rheumatoid arthritis","Condition","SNOMED","S",TRUE
+"M06","3105","RheumatoidArthritis","M06",45596441,"Other rheumatoid arthritis","ICD10",80809,"Rheumatoid arthritis","Condition","SNOMED","S",TRUE
+"E11","3106","Type2Diabetes","E11",45571656,"Type 2 diabetes mellitus","ICD10",201826,"Type 2 diabetes mellitus","Condition","SNOMED","S",TRUE
+"M10","3107","Gout","M10",45533711,"Gout","ICD10",440674,"Gout","Condition","SNOMED","S",TRUE
+"M80","3108","Osteoporosis","M80",45577360,"Osteoporosis with pathological fracture","ICD10",40480160,"Osteoporotic fracture","Condition","SNOMED","S",TRUE
+"M81","3108","Osteoporosis","M81",45587093,"Osteoporosis without pathological fracture","ICD10",80502,"Osteoporosis","Condition","SNOMED","S",TRUE
+"M82","3108","Osteoporosis","M82",45755479,"Osteoporosis in diseases classified elsewhere","ICD10",45766159,"Secondary osteoporosis","Condition","SNOMED","S",TRUE
+"I48","3109","AtrialFibrillation","I48",45596206,"Atrial fibrillation and flutter","ICD10",4068155,"Atrial arrhythmia","Condition","SNOMED","S",TRUE
+"I26","3110","VenousThromboembolism","I26",45548014,"Pulmonary embolism","ICD10",440417,"Pulmonary embolism","Condition","SNOMED","S",TRUE
+"I80","3110","VenousThromboembolism","I80",45567229,"Phlebitis and thrombophlebitis","ICD10",320741,"Thrombophlebitis","Condition","SNOMED","S",TRUE
+"O87.1","3110","VenousThromboembolism","O87.1",45582580,"Deep phlebothrombosis in the puerperium","ICD10",438820,"Deep venous thrombosis in puerperium","Condition","SNOMED","S",TRUE
+"O88.2","3110","VenousThromboembolism","O88.2",45539204,"Obstetric blood-clot embolism","ICD10",442599,"Obstetrical blood clot embolism","Condition","SNOMED","S",TRUE
+"M16","3111","Coxarthrosis","M16",45577162,"Coxarthrosis [arthrosis of hip]","ICD10",4079749,"Osteoarthritis of hip","Condition","SNOMED","S",TRUE
+"N18","3112","ChronicKidneyDisease","N18",45582391,"Chronic kidney disease","ICD10",46271022,"Chronic kidney disease","Condition","SNOMED","S",TRUE
+"Y84.1","3112","ChronicKidneyDisease","Y84.1",45547253,"Kidney dialysis as the cause of abnormal reaction of the patient, or of later complication, without mention of misadventure at the time of the procedure","ICD10",4027133,"Complication of dialysis","Condition","SNOMED","S",TRUE
+"Z99.2","3112","ChronicKidneyDisease","Z99.2",45581097,"Dependence on renal dialysis","ICD10",4019967,"Dependence on renal dialysis","Observation","SNOMED","S",TRUE
+"H40","3113","Glaucoma","H40",45547879,"Glaucoma","ICD10",437541,"Glaucoma","Condition","SNOMED","S",TRUE
+"H42","3113","Glaucoma","H42",45600924,"Glaucoma in diseases classified elsewhere","ICD10",437541,"Glaucoma","Condition","SNOMED","S",TRUE
+"I21","3114","MyocardialInfarction","I21",45538370,"Acute myocardial infarction","ICD10",312327,"Acute myocardial infarction","Condition","SNOMED","S",TRUE
+"I22","3114","MyocardialInfarction","I22",45562341,"Subsequent myocardial infarction","ICD10",4108217,"Subsequent myocardial infarction","Condition","SNOMED","S",TRUE
+"I11.0","3115","HeartFailure","I11.0",45538369,"Hypertensive heart disease with (congestive) heart failure","ICD10",314378,"Hypertensive heart disease with congestive heart failure","Condition","SNOMED","S",TRUE
+"I13.0","3115","HeartFailure","I13.0",45572075,"Hypertensive heart and renal disease with (congestive) heart failure","ICD10",439696,"Hypertensive heart and renal disease with (congestive) heart failure","Condition","SNOMED","S",TRUE
+"I13.2","3115","HeartFailure","I13.2",45552780,"Hypertensive heart and renal disease with both (congestive) heart failure and renal failure","ICD10",439694,"Hypertensive heart and renal disease with both (congestive) heart failure and renal failure","Condition","SNOMED","S",TRUE
+"I50","3115","HeartFailure","I50",45581779,"Heart failure","ICD10",316139,"Heart failure","Condition","SNOMED","S",TRUE
+"L40","3116","Psoriasis","L40",45577035,"Psoriasis","ICD10",140168,"Psoriasis","Condition","SNOMED","S",TRUE
+"I61","3117","Stroke","I61",45552800,"Intracerebral haemorrhage","ICD10",376713,"Cerebral hemorrhage","Condition","SNOMED","S",TRUE
+"I63","3117","Stroke","I63",45543186,"Cerebral infarction","ICD10",443454,"Cerebral infarction","Condition","SNOMED","S",TRUE
+"I64","3117","Stroke","I64",45548032,"Stroke, not specified as haemorrhage or infarction","ICD10",381316,"Cerebrovascular accident","Condition","SNOMED","S",TRUE
+"G47.3","3118","SleepApnea","G47.3",45562094,"Sleep apnoea","ICD10",313459,"Sleep apnea","Condition","SNOMED","S",TRUE
+"K50","3119","InflammatoryBowelDisease","K50",45755435,"Crohn disease [regional enteritis]","ICD10",201606,"Crohn's disease","Condition","SNOMED","S",TRUE
+"K51","3119","InflammatoryBowelDisease","K51",45557655,"Ulcerative colitis","ICD10",81893,"Ulcerative colitis","Condition","SNOMED","S",TRUE
+"G40","3120","Epilepsy","G40",45595935,"Epilepsy","ICD10",380378,"Epilepsy","Condition","SNOMED","S",TRUE
+"E24.4","3121","AlcoholUseDisorder","E24.4",45605412,"Alcohol-induced pseudo-Cushing syndrome","ICD10",4028805,"Alcohol-induced pseudo-Cushing's syndrome","Condition","SNOMED","S",TRUE
+"F10","3121","AlcoholUseDisorder","F10",45581401,"Mental and behavioural disorders due to use of alcohol","ICD10",37164793,"Organic mental disorder caused by ethanol","Condition","SNOMED","S",TRUE
+"G31.2","3121","AlcoholUseDisorder","G31.2",45591167,"Degeneration of nervous system due to alcohol","ICD10",37164783,"Neurological disorder caused by ethanol","Condition","SNOMED","S",TRUE
+"G62.1","3121","AlcoholUseDisorder","G62.1",45576603,"Alcoholic polyneuropathy","ICD10",378421,"Alcoholic polyneuropathy","Condition","SNOMED","S",TRUE
+"G72.1","3121","AlcoholUseDisorder","G72.1",45586312,"Alcoholic myopathy","ICD10",4078688,"Alcohol myopathy","Condition","SNOMED","S",TRUE
+"I42.6","3121","AlcoholUseDisorder","I42.6",45572089,"Alcoholic cardiomyopathy","ICD10",37164777,"Alcoholic cardiomyopathy","Condition","SNOMED","S",TRUE
+"K29.2","3121","AlcoholUseDisorder","K29.2",45586710,"Alcoholic gastritis","ICD10",195300,"Alcoholic gastritis","Condition","SNOMED","S",TRUE
+"K70","3121","AlcoholUseDisorder","K70",45591605,"Alcoholic liver disease","ICD10",201612,"Alcoholic liver damage","Condition","SNOMED","S",TRUE
+"K85.2","3121","AlcoholUseDisorder","K85.2",45601195,"Alcohol-induced acute pancreatitis","ICD10",4340493,"Alcohol-induced acute pancreatitis","Condition","SNOMED","S",TRUE
+"K86.0","3121","AlcoholUseDisorder","K86.0",45538554,"Alcohol-induced chronic pancreatitis","ICD10",4340964,"Alcohol-induced chronic pancreatitis","Condition","SNOMED","S",TRUE
+"O35.4","3121","AlcoholUseDisorder","O35.4",45548759,"Maternal care for (suspected) damage to fetus from alcohol","ICD10",36712695,"Suspected fetal abnormality affecting management of mother","Condition","SNOMED","S",TRUE
+"P04.3","3121","AlcoholUseDisorder","P04.3",45606684,"Fetus and newborn affected by maternal use of alcohol","ICD10",1244885,"Fetal disorder caused by maternal alcohol dependence in pregnancy","Condition","SNOMED","S",TRUE
+"Q86.0","3121","AlcoholUseDisorder","Q86.0",45582682,"Fetal alcohol syndrome (dysmorphic)","ICD10",4004785,"Fetal alcohol syndrome","Condition","SNOMED","S",TRUE
+"T51","3121","AlcoholUseDisorder","T51",45580249,"Toxic effect of alcohol","ICD10",37165682,"Toxic effect of substance with alcohol structure","Condition","SNOMED","S",TRUE
+"Z71.4","3121","AlcoholUseDisorder","Z71.4",45566455,"Alcohol abuse counselling and surveillance","ICD10",4083236,"Alcoholism counseling","Procedure","SNOMED","S",TRUE

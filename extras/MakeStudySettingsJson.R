@@ -4,26 +4,25 @@
 #
 # One-off script, not part of the package. Run from the repository root.
 #
-# The tasks and the two index dates they need:
+# The tasks, both indexed on the discharge date:
 #
-#   death7      7-day mortality   admission  covariates .. 0   TAR day 1 .. 7
-#   death30    30-day mortality   admission  covariates .. 0   TAR day 1 .. 30
-#   longStay   length of stay     admission  covariates .. 0   TAR day 0
-#   phenotype  phenotyping        admission  covariates .. 0   TAR day 0 .. discharge
 #   readmit    30-day readmission discharge  covariates .. 0   TAR day 1 .. 30
 #   newDx      new diagnoses      discharge  covariates .. 0   TAR day 1 .. 365
 #
-# Every task cuts its features at the end of its own index day: admission day
-# 23:59 for the admission-anchored tasks, discharge day for the other two. That
-# is sequenceEndDay = 0 throughout, since FeatureExtraction counts whole days.
+# Both cut their features at the end of the discharge day, which is
+# sequenceEndDay = 0, since FeatureExtraction counts whole days. They need
+# covariates up to discharge and time at risk starting the day after it, and a
+# single fixed sequenceEndDay cannot express that against an admission-indexed
+# target because the stay length differs per patient - hence
+# Inpatient_visit_discharge rather than Inpatient_visit as the target.
 #
-# The two mortality tasks share the death cohort and differ only in the length
-# of the risk window, which is why the settings are keyed by taskId.
-#
-# R1 and A need covariates up to discharge and time at risk starting the day
-# after it. A single fixed sequenceEndDay cannot express that against an
-# admission-indexed target, because the stay length differs per patient, so
-# those two use Inpatient_visit_discharge as their target instead.
+# 2026-11-05: the previous set also held death7, death30, longStay and 27
+# phenotype tasks, all indexed on admission. They were dropped with their
+# cohort definitions, which are kept in SparseArray/extras/retired_cohort_sql/.
+# The newDx outcomes changed with them: 21 diseases defined by the reference
+# table's ICD-10 codes, mapped to SNOMED and expanded over descendants, built
+# by SparseArray/extras/MakeNewDxCohortSql.R. The task settings are unchanged -
+# first diagnosis in the year after discharge.
 
 # Works either against the installed package or straight from the sources.
 if (requireNamespace("SparseArray", quietly = TRUE)) {
@@ -33,10 +32,12 @@ if (requireNamespace("SparseArray", quietly = TRUE)) {
   source("R/StudySettings.R")
 }
 
-cohortsFile      <- "inst/settings/CohortsToCreate.csv"
+# The cohort definitions stay in SparseArray; only the task definitions moved
+# here, so this reads across to that copy. Run from the TabEHR root.
+cohortsFile      <- "SparseArray/inst/settings/CohortsToCreate.csv"
 outFile          <- "inst/settings/studySettings.json"
-admissionTarget  <- 1000L   # Inpatient_visit
-dischargeTarget  <- 1003L   # Inpatient_visit_discharge
+admissionTarget  <- 1000L   # Inpatient_visit, the readmission outcome
+dischargeTarget  <- 1003L   # Inpatient_visit_discharge, the only target left
 
 cohorts <- utils::read.csv(cohortsFile, stringsAsFactors = FALSE)
 stopifnot(all(c("cohortId", "atlasName", "type") %in% names(cohorts)))
@@ -45,8 +46,12 @@ idsOfType <- function(type) {
                  logical(1))
   as.integer(cohorts$cohortId[keep])
 }
-phenotypeIds    <- idsOfType("phenotype")
 newDiagnosisIds <- idsOfType("new_diagnoses")
+if (length(newDiagnosisIds) == 0) {
+  stop(cohortsFile, " registers no cohort of type new_diagnoses. Run ",
+       "SparseArray/extras/AddSnomedToNewDxCsv.R and then ",
+       "SparseArray/extras/MakeNewDxCohortSql.R first.", call. = FALSE)
+}
 
 # ---------------------------------------------------------------------------
 # Covariate settings. One day per time position, a year of lookback.
@@ -71,26 +76,23 @@ baseWindow <- list(
 # either way. Note that this is the value of a measurement, so a measurement
 # with no numeric value contributes nothing; FeatureExtraction's useMeasurement
 # (analysis 701) is the covariate that only says the measurement was taken.
+# measurementValueAggregate has to match the one in analysisSettings.json:
+# allrecords is built with that setting and the task input is cut out of
+# allrecords, so a different aggregate here would make
+# featureExtractionLong.csv disagree with the input it is meant to describe.
 allDomains <- list(
   useConditionOccurrence = TRUE,
   useDrugExposure = TRUE,
   useProcedureOccurrence = TRUE,
-  useMeasurementValueUnit = TRUE
+  useMeasurementValueUnit = TRUE,
+  measurementValueAggregate = "min"
 )
 
+# Readmission and new diagnoses: indexed on the discharge date, so day 0 is the
+# discharge itself and the whole stay is in the lookback. One block, so the
+# pipeline extracts once - the admission-indexed blocks went with the tasks
+# that used them.
 covariateSettings <- list(
-  # Mortality and length of stay: everything known by admission day 23:59.
-  admission = c(baseWindow, list(sequenceEndDay = 0), allDomains),
-  # Phenotyping: the outcome is the conditions recorded during this stay, so
-  # condition_occurrence is dropped from the features.
-  admissionNoCondition = c(baseWindow, list(sequenceEndDay = 0), list(
-    useConditionOccurrence = FALSE,
-    useDrugExposure = TRUE,
-    useProcedureOccurrence = TRUE,
-    useMeasurementValueUnit = TRUE
-  )),
-  # Readmission and new diagnoses: indexed on the discharge date, so day 0 is
-  # the discharge itself and the whole stay is in the lookback.
   discharge = c(baseWindow, list(sequenceEndDay = 0), allDomains)
 )
 
@@ -111,34 +113,6 @@ defaultPopulationSettings <- list(
   riskWindowEnd = 0,
   endAnchor = "cohort end",
   restrictTarToCohortEnd = FALSE
-)
-
-# Mortality, in and out of hospital, from the day after admission. minTimeAtRisk
-# is riskWindowEnd - riskWindowStart, which requires the full window.
-# removeSubjectsWithPriorOutcome drops anyone who died on the admission day.
-mortality <- function(days) {
-  list(
-    removeSubjectsWithPriorOutcome = TRUE,
-    requireTimeAtRisk = TRUE, minTimeAtRisk = days - 1,
-    riskWindowStart = 1, startAnchor = "cohort start",
-    riskWindowEnd = days, endAnchor = "cohort start"
-  )
-}
-
-# The index admission itself lasted >= 7 days. The cohort shares the
-# target's codeset and index date and only adds DATEDIFF >= 7, so the event
-# lands exactly on day 0; collapsing the window to day 0 labels that admission
-# and nothing else, where anchoring the end on "cohort end" would also catch a
-# separate admission that started during the index stay.
-longStay <- list(
-  riskWindowStart = 0, startAnchor = "cohort start",
-  riskWindowEnd = 0, endAnchor = "cohort start"
-)
-
-# Conditions recorded between admission and discharge.
-phenotype <- list(
-  riskWindowStart = 0, startAnchor = "cohort start",
-  riskWindowEnd = 0, endAnchor = "cohort end"
 )
 
 # 30 days from the index date, which is already the discharge for this
@@ -167,26 +141,23 @@ task <- function(taskId, targetId, outcomeId, covariateSettingsId,
        populationSettings = populationSettings, note = note)
 }
 
+# The outcome name goes into the note, so a label file says which disease it
+# holds without a lookup in CohortsToCreate.csv.
+outcomeName <- function(id) {
+  name <- cohorts$atlasName[as.integer(cohorts$cohortId) == id]
+  if (length(name) == 1) name else as.character(id)
+}
+
 settings <- c(
-  list(
-    task("death7", admissionTarget, 1001L, "admission", mortality(7L),
-         "7-day mortality, in and out of hospital, from the day after admission"),
-    task("death30", admissionTarget, 1001L, "admission", mortality(30L),
-         "30-day mortality, in and out of hospital, from the day after admission"),
-    task("longStay", admissionTarget, 1002L, "admission", longStay,
-         "Long length of stay, index admission >= 7 days")
-  ),
-  lapply(phenotypeIds, function(id) {
-    task(paste0("phenotype", id), admissionTarget, id, "admissionNoCondition",
-         phenotype, "Phenotyping, condition during the index stay")
-  }),
   list(
     task("readmit", dischargeTarget, admissionTarget, "discharge",
          readmission, "30-day readmission after discharge")
   ),
   lapply(newDiagnosisIds, function(id) {
     task(paste0("newDx", id), dischargeTarget, id, "discharge",
-         newDiagnosis, "New diagnosis within 365 days of discharge")
+         newDiagnosis,
+         paste0("First ", outcomeName(id),
+                " diagnosis within 365 days of discharge"))
   })
 )
 
@@ -206,9 +177,9 @@ cat(sprintf("%-14s %-5s %-5s %-21s %-5s %-12s %-5s %-12s %-6s %-6s %s
             "tarE", "endAnchor", "reqTAR", "minTAR", "rmPrior"))
 shown <- character(0)
 for (s in settings) {
-  # The 27 phenotype tasks and the 7 new-diagnosis tasks are identical apart
-  # from the outcome, so only the first of each is printed.
-  family <- if (grepl("^(phenotype|newDx)", s$taskId)) {
+  # The new-diagnosis tasks are identical apart from the outcome, so only the
+  # first of them is printed.
+  family <- if (grepl("^newDx", s$taskId)) {
     sub("[0-9]+$", "", s$taskId)
   } else {
     s$taskId

@@ -148,8 +148,8 @@ studyExtractionNames <- function(studySettingsFile = system.file(
   nrow(rows)
 }
 
-# Domains enabled by one extraction's settings, including the condition-free
-# phenotype input. The allrecords extraction itself contains every domain.
+# Domains enabled by one extraction's settings. The allrecords extraction itself
+# contains every domain, so this only ever narrows.
 #' @noRd
 .taskInputDomains <- function(settings) {
   flags <- c(cond = "useConditionOccurrence", drug = "useDrugExposure",
@@ -216,7 +216,7 @@ studyExtractionNames <- function(studySettingsFile = system.file(
 #'
 #' The input is written per extraction rather than per task, because the
 #' observation window comes from the covariate settings block and the index
-#' date from the target cohort: the 38 tasks of this study share three. The
+#' date from the target cohort: the 22 tasks of this study share one. The
 #' labels stay per task, in `outcomeLabels.csv`, because the time at risk and
 #' the prior outcome criteria differ.
 #'

@@ -7,19 +7,21 @@
 createOutcomeLabels(
   outputFolder,
   studySettingsFile = system.file("settings", "studySettings.json", package =
-    "SparseArray"),
+    "TabEHR"),
   cohortsToCreateFile = system.file("settings", "CohortsToCreate.csv", package =
     "SparseArray"),
   savePopulations = TRUE
 )
 }
 \arguments{
-\item{outputFolder}{Folder holding the extractions saved by \code{\link[=createPlpData]{createPlpData()}},
+\item{outputFolder}{Folder holding the extractions saved by \code{\link[SparseArray:extractPlpData]{SparseArray::extractPlpData()}},
 and where the label files are written.}
 
 \item{studySettingsFile}{JSON file written by \code{\link[=saveStudySettings]{saveStudySettings()}}.}
 
-\item{cohortsToCreateFile}{CSV listing the cohorts, used to name the outcomes.}
+\item{cohortsToCreateFile}{CSV listing the cohorts, used to name the outcomes.
+The cohort definitions live in SparseArray, so the default reads that
+package's copy; without it the labels name an outcome by its cohort id.}
 
 \item{savePopulations}{Also save each \code{createStudyPopulation()} result as it
 came back, under \code{outputFolder/studyPopulation}? The CSV keeps the columns

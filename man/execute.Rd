@@ -69,7 +69,7 @@ Defaults to the file installed with this package.}
 \item{extractRecords}{Extract the condition, drug, procedure and measurement
 records?}
 
-\item{createStudyPopulation}{Apply the three study population criteria?}
+\item{createStudyPopulation}{Apply the study population criteria?}
 
 \item{createPersonSplit}{Split the patients into pretraining and downstream?}
 

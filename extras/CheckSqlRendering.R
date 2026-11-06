@@ -82,6 +82,9 @@ parameters <- function(dialect) {
       cohort_id_clause = "\t\tAND cohort.cohort_definition_id IN (1000)",
       analysis_id = 998,
       no_value_analysis_id = 999,
+      # The measurement value aggregate. All four are rendered below.
+      value_aggregate = "min",
+      value_aggregate_function = "MIN",
       time_part = "DAY",
       time_interval = 1,
       sequence_start_day = -99999,
@@ -265,6 +268,56 @@ for (file in c("StudyPopulation.sql", "StudyPopulationFlow.sql")) {
   }
 }
 print(do.call(rbind, admissionRows), row.names = FALSE)
+
+# The measurement value aggregate renders four ways, and median takes a
+# different branch: no portable MEDIAN aggregate exists, so the SQL ranks the
+# values instead. Both branches are checked on every dialect.
+cat("
+==== MeasurementValueUnit.sql, every value aggregate ====
+")
+aggregateFunctions <- c(min = "MIN", max = "MAX", mean = "AVG",
+                        median = "AVG")
+aggregateRows <- list()
+if (file.exists(measurementValueSql)) {
+  template <- SqlRender::readSql(measurementValueSql)
+  for (dialect in dialects) {
+    for (aggregate in names(aggregateFunctions)) {
+      available <- parameters(dialect)
+      available$value_aggregate <- aggregate
+      available$value_aggregate_function <- aggregateFunctions[[aggregate]]
+      used <- available[vapply(
+        names(available),
+        function(name) grepl(paste0("@", name, "\\b"), template),
+        logical(1)
+      )]
+      sql <- tryCatch(
+        SqlRender::translate(
+          do.call(SqlRender::render, c(list(sql = template), used)),
+          targetDialect = dialect
+        ),
+        error = function(e) paste("ERROR:", conditionMessage(e))
+      )
+      failed <- startsWith(sql, "ERROR:")
+      aggregateRows[[length(aggregateRows) + 1]] <- data.frame(
+        dialect = dialect,
+        aggregate = aggregate,
+        ranks_the_values = !failed && grepl("value_rank", sql, fixed = TRUE),
+        aggregate_call = if (failed) "" else
+          regmatches(sql, regexpr("(MIN|MAX|AVG)\\(CAST", sql)),
+        unresolved_parameters = if (failed) "" else
+          paste(unique(unlist(regmatches(
+            sql, gregexpr("@[A-Za-z_][A-Za-z0-9_]*", sql)
+          ))), collapse = " "),
+        unresolved_conditionals = if (failed) NA_integer_ else
+          length(unlist(regmatches(sql, gregexpr("\\{[^{}]*\\}[[:space:]]*[?]",
+                                                sql)))),
+        error = if (failed) sql else "",
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  print(do.call(rbind, aggregateRows), row.names = FALSE)
+}
 
 failures <- results[!results$ok, , drop = FALSE]
 cat("\n", nrow(results) - nrow(failures), "of", nrow(results), "ok\n")
