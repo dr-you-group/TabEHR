@@ -728,38 +728,47 @@ observation, AlcoholUseDisorder는 상담 procedure. 표의 코드를 그대로 
 **현재 `studySettings.json`은 21개가 모두 매핑된다고 가정하고 쓴 것**이다. 매핑
 후 `MakeStudySettingsJson.R`을 다시 돌려 실제 등록된 cohort로 덮어써야 한다.
 
-### K5. 창 단위 covariate 집계 (status: 코드 수정, 실데이터 실행 대기)
+### K5. 관찰 구간(window) 단위 축약 (status: 코드 수정, 실데이터 실행 대기)
 
 > 사용자 요청: taskInput은 하루 단위 기록인데, FeatureExtraction의 longTerm·
 > mediumTerm·shortTerm처럼 구간 안에 covariate가 하나라도 있으면 1, 없으면 0으로
-> 전처리하고, measurement value도 구간당 값 하나가 나오게 한다. `execute()` 출력을
-> 후처리하는 형태로 `extras/`에 둔다.
+> 전처리하고, measurement value도 구간당 값 하나가 나오게 한다.
 
 `extras/MakeWindowCovariates.R`를 만들었다. DB가 필요 없고 재추출도 하지 않는다.
 `taskInput/<extraction>/input.csv.gz`를 스트리밍으로 읽어
-`windowCovariates.csv.gz`(+ 참조 파일 3개)를 같은 폴더에 쓴다.
+`taskInput/<extraction>/windows/<창이름>.csv.gz`를 쓴다.
+
+**2026-11-18 설계 변경**: 처음에는 FE의 비-temporal analysis id(102·103·104 …
+706·707·708)로 covariate id를 만들어 한 파일에 담았다. 그런데 그 번호 공간이 일
+단위 추출(101·301·501·998·999)과 **같은 숫자를 다른 뜻으로 쓰는 문제**가 있었다
+(`anyTimePrior`를 켜면 101·301·501이 정면 충돌하고, 충돌하지 않더라도 두 파일의
+`covariate_id`를 섞어 읽으면 뜻이 달라진다). 사용자 제안대로 **창마다 파일을
+나누는 것으로 바꾸면서 id 체계 자체를 없앴다.**
 
 | 결정 | 내용 |
 |---|---|
-| analysis·covariate id | **FE v3.2.0의 비-temporal 체계를 그대로** 쓴다: Condition 102/103/104, Drug 302–304, Procedure 502–504, Measurement 702–704, MeasurementValue 706–708. id 공식도 FE의 것(`concept*1000 + analysis`, 값은 `concept*1000000 + (unit%1000)*1000 + analysis`). **일 단위 추출의 998/999와는 다른 id 공간**이고, 섞으면 안 되므로 참조 파일에 `concept_id`·`unit_concept_id`를 따로 싣는다 |
-| 기본 창 | `longTerm` −365~0, `mediumTerm` −180~0, `shortTerm` −30~0 (FE `createCovariateSettings()`의 기본값). 스크립트 맨 위 `windows` 목록을 고치면 되고 `anyTimePrior`도 한 줄이다 |
-| 창의 끝 | `endDay > 0`은 **에러로 막는다.** index 이후 구간은 taskInput에 애초에 없고, 있다면 outcome 누출이다 |
-| 이진 covariate | 구간 안에 기록이 하나라도 있으면 1. **없으면 행을 쓰지 않는다**(sparse = 없으면 0) |
-| 측정값 | 구간 안 **가장 최근 '값이 있는' 기록**의 값. FE `MeasurementValue.sql`이 `value_as_number IS NOT NULL`만 보므로, 더 최근의 값 없는 기록이 이전 값을 가리지 않는다. 자가 테스트로 확인했다(2일 전 값 없음 / 10일 전 7.5 / 40일 전 9.1 → 세 창 모두 **7.5**) |
-| 동점 | 입력이 이미 (row, concept, 하루) 1건으로 줄어 있어 FE의 2·3순위 키(unit, value)가 발동할 일이 없다. "파일 순서의 첫 행 = 가장 최근"으로 결정된다 |
-| 측정의 이진 covariate | 값 있는 측정도 702~704(측정을 했다) + 706~708(그 값) **둘 다** 만든다. FE에서 두 플래그를 켠 것과 같다. `measurementBinary <- FALSE`로 값만 남길 수 있다 |
+| 출력 | `windows/<창이름>.csv.gz`, 열은 **`input.csv.gz`에서 `time_id`만 뺀 것**. `allrecords`·task input과 열 뜻이 완전히 같다 |
+| 키 | `(domain, concept_id, unit_concept_id)` — 이 프로젝트의 본래 키. **covariateId·analysisId 없음**, 따라서 겹칠 id가 존재하지 않는다 |
+| 존재 | 구간에 기록이 있으면 행이 있고, 없으면 **행이 없다**(sparse = 없으면 0) |
+| 대표 행 | 구간 안 **가장 최근 기록**. 측정은 **가장 최근 "값 있는" 기록**(FE `MeasurementValue.sql`과 같은 규칙 — 더 최근의 값 없는 기록이 이전 값을 가리지 않는다). 한 행만 쓰므로 값·단위·`record_date`가 **같은 기록에서** 나오게 한 것이다 |
+| 기본 창 | `longTerm` −365~0, `mediumTerm` −180~0, `shortTerm` −30~0 (FE `createCovariateSettings()` 기본값). 스크립트 맨 위 `windows` 목록을 고치면 된다 |
+| 창의 끝 | `endDay > 0`은 **에러로 막는다.** index 이후 구간은 taskInput에 없고, 있다면 outcome 누출이다 |
+
+`outcomeLabels.csv`는 **필요 없다.** `time_id`가 이미 index date 기준 상대 일수라
+창 필터는 `time_id <= N`뿐이다(index date가 필요하면 `record_date + time_id`로
+파일 안에서 복원된다).
 
 입력이 `row_id` → `time_id` 오름차순으로 정렬돼 있다는 성질(`.writeTaskInput()`의
-`arrange`)을 이용해 **환자 1행씩 스트리밍**으로 집계한다. 청크 경계에 걸친
+`arrange`)을 이용해 **환자 1행씩 스트리밍**으로 축약한다. 청크 경계에 걸친
 `row_id`는 다음 청크로 넘겨 모아 처리하므로 정렬이나 전체 적재가 필요 없다.
+세 창은 중첩이라 30일 안에 본 concept은 세 파일 모두에 나온다.
 
-`row_id`가 `outcomeLabels.csv`와 그대로 조인되므로, extraction 하나에서 나온 창
-파일 하나가 그 extraction을 공유하는 **모든 task에 쓰인다**(현재 22개 전부).
-
-**검증**: 합성 데이터로 자가 테스트 완료 — 창 밖(400일) 기록 제외, 기록이 창 밖에만
-있는 환자는 행 0개, 값 covariate의 "가장 최근 유효값" 규칙, 청크 경계 분할(chunk=3),
-`rows=` 테스트 모드가 실제 파일을 건드리지 않는 것, 실패 시 staging 정리까지 확인했다.
-실데이터 실행은 아직이다.
+**검증**: 합성 데이터 자가 테스트 — 열 구성(`input.csv.gz` − `time_id`),
+(row_id, concept)당 1행, 측정의 "가장 최근 값 있는 기록" 규칙(값·날짜가 같은
+기록에서 나오는 것 포함), 창 밖(400일) 기록 제외, 기록이 창 밖에만 있는 환자는
+어느 파일에도 안 나오는 것, 중첩 관계(short ⊂ long), 청크 경계 분할(chunk=3),
+`rows=` 테스트 모드가 `windows-sample/`로 분리되는 것까지 확인했다. 실데이터
+실행은 아직이다.
 
 ### K6. MedRep 형식 label 파일 (status: 만들었다가 전부 삭제)
 
@@ -845,3 +854,37 @@ instance 키(`<person_id>_<row_id>`), `allrecords_finetune.csv.gz`,
 생성을 확인했다. 설정 JSON 왕복과 잘못된 값 거부도 확인했다. `extras/CheckSqlRendering.R`에
 4가지 집계를 방언별로 렌더하는 블록을 추가했으니 **컨테이너에서 그것으로 재확인**해야
 한다. 실데이터 실행은 아직이다.
+
+### K8. task별 dataset 만들기 (label과 기록 join) (status: 코드 작성, 실데이터 미실행)
+
+> 사용자 질문: "나중에 taskInput 내 input.csv.gz는 outcomeLabel.csv랑 join해서
+> 쓰지?" → 그렇다. 그 join 코드를 `extras`에 만들었다.
+
+`extras/MakeTaskDataset.R`. DB가 필요 없고 재추출도 하지 않는다.
+`outcomeLabels.csv`를 읽어 task별로 `taskDataset/<taskId>/labels.csv`를 쓰고,
+`records=TRUE`일 때만 그 task의 `row_id`에 해당하는 기록을 함께 쓴다.
+
+| 결정 | 이유 |
+|---|---|
+| join 키는 `row_id` | `row_id` 하나가 target cohort 한 행(= 한 번의 퇴원)이다. 한 환자에게 적격 입원이 여러 번이면 `row_id`도 여러 개이고 index date와 label이 제각각이므로, `person_id`로 조인하면 서로 다른 입원의 기록과 label이 섞인다 |
+| 기록 사본은 기본값에서 끈다(`records=FALSE`) | 22개 task가 extraction 하나를 공유하므로 task마다 다른 것은 label뿐이다. 켜면 같은 기록 파일이 22부 생긴다 |
+| inner join | `input.csv.gz`는 모든 task의 `row_id` 합집합이고, task별 PLP population 설정(`removeSubjectsWithPriorOutcome`, `requireTimeAtRisk`)이 일부를 떨어뜨린다. 반대로 관찰 구간에 기록이 하나도 없는 `row_id`도 있을 수 있어서, label이 기록의 부분집합도 아니다 |
+| 열 이름은 snake case | `input.csv.gz`·윈도우 파일과 그대로 조인되게 하려고 `rowId` → `row_id`, `subjectId` → `person_id`로 바꿨다 |
+| `source=<윈도우 이름>` | `windows/<이름>.csv.gz`도 같은 키로 조인된다. 출력은 `records-<이름>.csv.gz`로 나눠 일 단위 파일을 덮어쓰지 않는다 |
+
+CLAUDE.md 5절의 `taskLabels/<taskId>.csv`와 내용이 거의 같지만, 이것은
+`execute()`가 만드는 산출물이 아니라 출력 폴더를 나중에 전처리하는 단계라
+`taskDataset/`로 이름을 달리 했다.
+
+**2026-11-18 정리**: 처음 만든 판에는 진행 로그, `summary.csv`(task별 행수·양성률·
+기록 없는 행 수), 출력 폴더 자동 탐색, staging 파일 교체가 들어 있었다. 사용자
+요청으로 **꼭 필요한 것만 남겼다** — label 분리, 기록 필터, 그리고 `row_id`와
+`person_id`를 문자열로 읽는 것. 집계가 필요하면 `labels.csv`에서 바로 세면 된다.
+
+**검증**: 합성 데이터 자가 테스트 — task 2개가 extraction 하나를 공유하는 경우에
+label이 task별로 걸러지는 것, 열 이름이 snake case로 바뀌는 것, 19자리 `person_id`가
+문자열로 살아남는 것, 기록이 그 task의 `row_id`로만 걸러지는 것(라벨이 없는 `row_id`
+14 제외, 기록이 없는 `row_id` 13이 있어도 멈추지 않는 것), 측정값과 단위가 그대로
+남는 것, 윈도우 소스가 `time_id` 없는 일곱 열로 읽히는 것, 윈도우 출력이 일 단위
+파일을 덮어쓰지 않는 것, 없는 task와 없는 옵션에서 멈추는 것을 확인했다(청크 경계
+`chunk=2` 포함). 실데이터 실행은 아직이다.

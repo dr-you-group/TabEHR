@@ -126,11 +126,11 @@ one, or `featureExtractionLong.csv` will disagree with the input it describes.
 This is the **day** aggregate. The window covariates below take the most recent
 value in the window, which is a separate rule.
 
-## Window covariates (optional)
+## Observation windows (optional)
 
-`taskInput/<extraction>/input.csv.gz` holds one row per record per day. To get
-the shape FeatureExtraction's non-temporal settings produce - one covariate per
-concept per observation window - run the post-processing step:
+`taskInput/<extraction>/input.csv.gz` holds one row per record per day. To
+reduce each observation window to one row per concept, run the post-processing
+step:
 
 ```bash
 Rscript extras/MakeWindowCovariates.R output mimic            # all extractions
@@ -139,27 +139,93 @@ Rscript extras/MakeWindowCovariates.R output mimic rows=2000000   # test run
 
 It needs no database and re-extracts nothing. Default windows are
 FeatureExtraction's `longTerm` (-365..0), `mediumTerm` (-180..0) and
-`shortTerm` (-30..0); edit the `windows` list at the top of the script to change
-them, or add `anyTimePrior`.
+`shortTerm` (-30..0); edit the `windows` list at the top of the script to
+change them or add one.
 
-| Written next to the input | Contents |
-|---|---|
-| `windowCovariates.csv.gz` | `row_id`, `covariate_id`, `covariate_value`, sparse: a concept with no record in the window has no row, which is the 0 |
-| `windowCovariateRef.csv` | what each covariate id means: analysis, concept, unit, domain, window |
-| `windowAnalysisRef.csv` | the analyses used, with their window days |
-| `windowCovariates_report.csv` | rows and distinct covariates per analysis |
+```
+taskInput/<extraction>/
+  input.csv.gz              one row per record per day
+  windows/
+    longTerm.csv.gz         one row per (row_id, concept) in that window
+    mediumTerm.csv.gz
+    shortTerm.csv.gz
+    ref.csv                 the window days and the row counts
+```
 
-A concept with at least one record in the window gets 1. A measurement also
-gets the value of its **most recent valued record** in that window, which is
-FeatureExtraction's rule: a later record with no numeric value does not hide an
-earlier value. The analysis and covariate ids are FeatureExtraction's own
-(`ConditionOccurrenceLongTerm` 102 … `MeasurementValueShortTerm` 708,
-`concept_id * 1000 + analysis_id`, and `concept_id * 1000000 +
-(unit_concept_id %% 1000) * 1000 + analysis_id` for a value), not the daily
-extraction's 998/999.
+Each window file has **the columns of `input.csv.gz` minus `time_id`** -
+`row_id`, `person_id`, `domain`, `concept_id`, `record_date`,
+`value_as_number`, `unit_concept_id` - so it reads exactly like `allrecords`
+and the task input. There is no covariate id and no analysis id: a record is
+keyed on `(domain, concept_id, unit_concept_id)` here as everywhere else, and
+the window is the file it is in.
 
-`row_id` joins to `outcomeLabels.csv`, so one window file serves every task that
-shares the extraction.
+- A concept with at least one record in the window has a row; one with none has
+  no row, which is the 0.
+- That row is the **most recent record** of the concept in the window, so
+  `record_date` says how recent the evidence is.
+- For a measurement it is the most recent record **with a numeric value** when
+  the window holds one, so value, unit and date all come from the same record.
+  That is FeatureExtraction's rule too: a later record with no value does not
+  hide an earlier value.
+
+The windows are nested, so a concept seen in the last 30 days appears in all
+three files. `row_id` joins to `outcomeLabels.csv`, so one set of window files
+serves every task that shares the extraction.
+
+## One task's dataset (optional)
+
+`outcomeLabels.csv` holds every task in one file, and the records of an
+extraction are shared by all 22 tasks. To split that into what a model for one
+task loads:
+
+```bash
+Rscript extras/MakeTaskDataset.R output mimic                          # labels
+Rscript extras/MakeTaskDataset.R output mimic task=newDx3101 records=TRUE
+Rscript extras/MakeTaskDataset.R output mimic source=longTerm records=TRUE
+```
+
+```
+taskDataset/
+  <taskId>/
+    labels.csv                  one row per prediction row
+    records.csv.gz              those rows' records, with records=TRUE
+    records-longTerm.csv.gz     the same from a window file
+```
+
+`labels.csv` columns: `task_id`, `extraction`, `row_id`, `person_id`,
+`index_date`, `tar_start_date`, `tar_end_date`, `time_at_risk`,
+`outcome_label`, `outcome_start_date`, `days_to_event` - the label file's
+columns in this project's snake case, so they join to `input.csv.gz` without
+renaming.
+
+**The join key is `row_id`, never `person_id`.** One `row_id` is one target
+cohort entry - one discharge - so a patient with three qualifying discharges
+has three `row_id`s with their own index dates and their own labels. In R the
+whole join is:
+
+```r
+labels <- read.csv("taskDataset/newDx3101/labels.csv",
+                   colClasses = c(row_id = "character", person_id = "character"))
+input  <- read.csv("taskInput/target1003_discharge/input.csv.gz",
+                   colClasses = c(row_id = "character", person_id = "character"))
+model  <- merge(input, labels[, c("row_id", "outcome_label")], by = "row_id")
+```
+
+Three things to know when joining by hand instead:
+
+- **Filter one `taskId` first.** All tasks sit in one `outcomeLabels.csv`, so
+  joining it unfiltered multiplies every record by the number of tasks.
+- **Join inside one extraction.** `row_id` is unique within an extraction, not
+  across them; that is why `extraction` is a column.
+- **Use an inner join.** `input.csv.gz` holds the union of every task's rows,
+  and each task's population settings (`removeSubjectsWithPriorOutcome`,
+  `requireTimeAtRisk`) drop some of them. A prediction row can also have no
+  record at all in a window, so the labels are not a subset of the records
+  either.
+
+`records=TRUE` writes a copy of the records per task, so it is off by default:
+with 22 tasks on one extraction that is 22 copies of the same file. The labels
+are what differ.
 
 ## Main outputs
 

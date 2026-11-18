@@ -197,8 +197,12 @@ computeQuantiles <- function(quantileFile) {
   }
 
   Andromeda::createIndex(covariateData$covariates, "covariateId")
+  # Bare column names, not the .data pronoun: dbplyr evaluates a namespaced
+  # call such as rlang::.data$covariateId locally instead of translating it,
+  # and then fails to escape the pronoun object with "Unknown input type:
+  # list". A package would need the pronoun for R CMD check; a script does not.
   counts <- dplyr::collect(dplyr::summarise(
-    dplyr::group_by(covariateData$covariates, rlang::.data$covariateId),
+    dplyr::group_by(covariateData$covariates, covariateId),
     n = dplyr::n()
   ))
   measurement$n <- counts$n[match(idText(measurement$covariateId),
@@ -411,67 +415,3 @@ if (!file.rename(stagingFile, outputFile)) {
 }
 cat("wrote", format(counters$read, big.mark = ","), "record(s) to", outputFile,
     sprintf("(%.1f MB)\n", file.size(outputFile) / 1024^2))
-
-# ---------------------------------------------------------------------------
-# 4. What the conversion did, which is what a test run is read for.
-# ---------------------------------------------------------------------------
-report <- data.frame(
-  measure = c("rows read", "rows with a numeric value",
-              "rows given a bin", "rows with a value but no bin",
-              "  of those, unit_concept_id 0 or empty",
-              "  of those, a mapped unit below the pair threshold",
-              "distinct unbinned (concept, unit) pairs with a mapped unit"),
-  n = c(counters$read, counters$valued, counters$binned, counters$unbinned,
-        counters$unbinnedUnitZero,
-        counters$unbinned - counters$unbinnedUnitZero,
-        length(ls(missed))),
-  stringsAsFactors = FALSE
-)
-print(report, row.names = FALSE)
-if (length(ls(missed)) > 0) {
-  tally <- vapply(ls(missed), function(name) get(name, envir = missed),
-                  numeric(1))
-  tally <- sort(tally, decreasing = TRUE)
-  cat("unbinned pairs with a mapped unit, most frequent first ",
-      "(concept|unit = rows):\n  ",
-      paste(utils::head(paste0(names(tally), " = ",
-                               format(tally, big.mark = ",", trim = TRUE)),
-                        10),
-            collapse = "\n  "), "\n", sep = "")
-}
-reportFile <- file.path(medRepFolder,
-                        if (sampleRun) "conversion_report_sample.csv" else
-                          "conversion_report.csv")
-write.csv(report, reportFile, row.names = FALSE)
-cat("wrote", reportFile, "\n")
-
-if (sampleRun) {
-  cat("\nThis was a test run:", basename(outputFile),
-      "holds only the first rows of allrecords, and README.md was not",
-      "rewritten.\n")
-} else {
-  writeLines(c(
-    "# MedRep comparison files",
-    "",
-    paste0("Written by `extras/CreateMedRepFiles.R` from the ",
-           "`allrecords.csv.gz` of ", databaseId, ", in the column set of"),
-    "MedRep's own `create_trajectory.py` output. Two differences from the",
-    "original are deliberate:",
-    "",
-    "- `record_datetime` holds a **date**, and a measurement is the last value",
-    "  of its day. The original keeps one record per hour, with the time of day.",
-    "  This project follows FeatureExtraction's rule so that `allrecords` and",
-    "  the downstream task inputs cannot disagree about what a record is.",
-    "- A numeric measurement whose unit is unmapped survives as a record, with",
-    "  no bin suffix. The original drops it.",
-    "",
-    paste0("Quantiles: ", length(quantileColumns) - 1, " bins over ",
-           nrow(quantiles), " (concept, unit) pair(s), from ",
-           basename(quantileFile), "."),
-    paste0("Rows: ", format(counters$read, big.mark = ","), ", of which ",
-           format(counters$binned, big.mark = ","), " carry a bin."),
-    paste0("Patients: train ", length(groups$train_id), ", valid ",
-           length(groups$valid_id), ", test ", length(groups$test_id), ".")
-  ), file.path(medRepFolder, "README.md"))
-  cat("wrote", file.path(medRepFolder, "README.md"), "\n")
-}
