@@ -69,3 +69,6 @@ __pycache__/
 #others
 preprocessing_files.zip
 preprocessing_files/
+
+/*.md
+!/README.md
